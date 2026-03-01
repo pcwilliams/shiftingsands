@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShiftingSands — Architecture</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+    <style>
+        :root {
+            --bg: #1a1410;
+            --surface: #241e17;
+            --surface2: #2e2620;
+            --border: #3d3228;
+            --text: #e8ddd0;
+            --muted: #9b8d7e;
+            --accent: #d4a853;
+            --accent2: #c47d2e;
+            --accent-dim: #8b6e3a;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 2rem;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+        h1 span { color: var(--accent); }
+
+        .subtitle {
+            color: var(--muted);
+            font-size: 1.1rem;
+            margin-bottom: 2.5rem;
+        }
+
+        h2 {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin: 2.5rem 0 0.5rem;
+            padding-bottom: 0.3rem;
+            border-bottom: 2px solid var(--accent);
+            display: inline-block;
+        }
+
+        .caption {
+            color: var(--muted);
+            font-size: 0.95rem;
+            margin-bottom: 1.25rem;
+            max-width: 52rem;
+        }
+
+        .diagram-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            overflow-x: auto;
+            max-width: 56rem;
+        }
+
+        .mermaid { text-align: center; }
+        .mermaid svg { max-width: 100%; height: auto; }
+
+        .note {
+            background: var(--surface2);
+            border-left: 4px solid var(--accent);
+            border-radius: 0 8px 8px 0;
+            padding: 0.75rem 1rem;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            max-width: 52rem;
+        }
+        .note strong { color: var(--accent); }
+
+        footer {
+            margin-top: 3rem;
+            color: var(--muted);
+            font-size: 0.85rem;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<h1><span>&#9203;</span> ShiftingSands</h1>
+<p class="subtitle">iOS Application Architecture</p>
+
+<!-- Hero screenshot -->
+<div style="text-align: center; margin: 32px 0 16px;">
+    <div style="display: inline-block; background: #000; border-radius: 40px; padding: 14px; box-shadow: 0 16px 64px rgba(0,0,0,0.6);">
+        <img src="sscrop.png" alt="ShiftingSands app running on iPhone 16 Pro" style="width: 240px; border-radius: 28px; display: block;" />
+    </div>
+    <p style="color: var(--muted); font-size: 0.85rem; margin-top: 14px;">Running on iPhone 16 Pro</p>
+</div>
+
+<!-- 1. HIGH-LEVEL OVERVIEW -->
+
+<h2>1. High-Level Overview</h2>
+<p class="caption">
+    The app follows MVVM. The SwiftUI ContentView observes a TimerViewModel, which drives
+    a SceneKit scene via a UIViewRepresentable bridge. Three physics/rendering modes: CPU
+    (O(N&sup2;) on one thread), GPU (Metal compute + SceneKit node readback), and Metal
+    instanced (Metal compute + mesh expansion, zero CPU readback). All hourglass geometry
+    is procedurally generated &mdash; no imported 3D models. Gravity scales inversely with
+    duration: <code>max(5.0/duration, 0.15)</code> &mdash; full gravity at 5s, reduced for
+    longer durations. A random colors toggle enables per-particle colour variation via
+    random-hue materials (CPU/GPU) or a GPU color buffer (Metal). CLI launch arguments
+    (<code>-mode</code>, <code>-count</code>, <code>-size</code>, <code>-dumpspawn</code>)
+    enable automated testing. A ShiftingSandsTests target has 16 tests covering CPU and GPU
+    physics engines.
+</p>
+<div class="diagram-card">
+    <pre class="mermaid">
+    graph TD
+        A["ContentView<br/><i>SwiftUI overlay + color toggle</i>"] -->|"@StateObject"| B["TimerViewModel<br/><i>@MainActor</i>"]
+        A --> C["HourglassSceneView<br/><i>UIViewRepresentable</i>"]
+        C -->|"makeCoordinator()"| D["Coordinator<br/><i>SCNSceneRendererDelegate</i>"]
+        D -->|"owns"| E["HourglassScene<br/><i>SCNScene builder</i>"]
+        E -->|"glass from"| F["SandGeometry<br/><i>dynamic profiles</i>"]
+        E -->|"CPU physics"| G["GranularSimulation<br/><i>O(N squared) CPU</i>"]
+        E -->|"GPU/Metal physics"| H["MetalPhysicsEngine<br/><i>Metal compute + mesh expansion<br/>+ color buffer</i>"]
+        E -->|"thread safety"| LOCK["NSLock<br/><i>particleLock</i>"]
+        B -->|"particleCount, duration,<br/>randomColors, physicsMode<br/>(UserDefaults)"| D
+        CLI["CLI Args<br/><i>-mode, -count,<br/>-size, -dumpspawn</i>"] -.->|"override on launch"| B
+        TESTS["ShiftingSandsTests<br/><i>16 tests: CPUPhysicsTests (10)<br/>GPUPhysicsTests (6)</i>"] -.->|"tests"| G
+        TESTS -.->|"tests"| H
+
+        style A fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style B fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style C fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style D fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style E fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style F fill:#2e2620,stroke:#8b6e3a,color:#e8ddd0
+        style G fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style H fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style LOCK fill:#2e2620,stroke:#8b6e3a,color:#e8ddd0
+        style CLI fill:#2e2620,stroke:#8b6e3a,color:#e8ddd0
+        style TESTS fill:#2e2620,stroke:#8b6e3a,color:#e8ddd0
+    </pre>
+</div>
+
+<!-- 2. SCENE NODE HIERARCHY -->
+
+<h2>2. Scene Node Hierarchy</h2>
+<p class="caption">
+    All hourglass geometry lives under a container node so the entire hourglass can rotate
+    during the flip animation. Camera and lights stay fixed on the root node.
+    CPU/GPU modes use N individual sphere nodes (with optional per-node random-hue materials
+    when random colors is enabled); Metal mode uses a single mesh node with per-vertex color.
+</p>
+<div class="diagram-card">
+    <pre class="mermaid">
+    graph TD
+        ROOT["scene.rootNode"] --> HC["hourglassContainer<br/><i>rotates during flip</i>"]
+        ROOT --> CAM["cameraNode<br/><i>FOV 40, z=3.0</i>"]
+        ROOT --> LIGHTS["5 light nodes<br/><i>key=120, front=100, fill=60,<br/>rim=60, bottom=8, env=0.08</i>"]
+
+        HC --> OG["outerGlassNode<br/><i>Blinn material, visible</i>"]
+        HC --> IG["innerGlassNode<br/><i>invisible, physics collider</i>"]
+        HC --> TC["topCapNode"]
+        HC --> BC["bottomCapNode"]
+        HC --> PC["particlesContainer<br/><i>CPU/GPU modes</i>"]
+        PC --> S1["sphere node 1"]
+        PC --> S2["sphere node 2"]
+        PC --> SN["sphere node N<br/><i>shared or per-node SCNSphere<br/>+ sand Lambert (random hue optional)</i>"]
+        HC --> RN["rendererNode<br/><i>Metal mode only</i>"]
+        RN --> MG["SCNGeometry from MTLBuffer<br/><i>icosahedron mesh per particle (42 verts)<br/>+ per-vertex color</i>"]
+
+        style ROOT fill:#241e17,stroke:#d4a853,color:#e8ddd0
+        style HC fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style CAM fill:#241e17,stroke:#8b6e3a,color:#e8ddd0
+        style LIGHTS fill:#241e17,stroke:#8b6e3a,color:#e8ddd0
+        style OG fill:#2e2620,stroke:#8b6e3a,color:#e8ddd0
+        style IG fill:#2e2620,stroke:#8b6e3a,color:#e8ddd0
+        style TC fill:#2e2620,stroke:#8b6e3a,color:#e8ddd0
+        style BC fill:#2e2620,stroke:#8b6e3a,color:#e8ddd0
+        style PC fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style S1 fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style S2 fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style SN fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style RN fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style MG fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+    </pre>
+</div>
+
+<!-- 3. TIMER STATE MACHINE -->
+
+<h2>3. Timer State Machine</h2>
+<p class="caption">
+    The timer uses a two-phase start: tapping Start triggers a 1.2-second flip animation,
+    and the actual countdown only begins when the animation completes. Particles tumble
+    with real physics during the flip.
+</p>
+<div class="diagram-card">
+    <pre class="mermaid">
+    stateDiagram-v2
+        [*] --> Resting: App launch
+        Resting --> Flipping: startFlip()
+        Flipping --> Running: completeFlip()
+        Running --> Complete: elapsed >= duration
+        Complete --> Resting: reset() respawns particles
+        Running --> Resting: reset() respawns particles
+        Flipping --> Resting: reset()
+
+        Resting: particles settled at bottom
+        Resting: all controls visible and enabled
+        Resting: presets — 5s, 10s, 30s
+        Resting: duration 5-30s (default 5s)
+        Resting: physics mode picker (CPU/GPU/Metal)
+        Flipping: isFlipping=true
+        Flipping: rebuilds particles if settings changed
+        Flipping: 180 rotation, real physics tumble
+        Flipping: top-right controls always enabled
+        Running: isRunning=true
+        Running: particles flow through neck
+        Running: gravity scales with duration
+        Running: mode change triggers restart
+        Complete: isComplete=true
+        Complete: particles at rest
+        Complete: respawns particles on transition
+    </pre>
+</div>
+
+<!-- 4. CPU PHYSICS ENGINE -->
+
+<h2>4. CPU Physics Engine</h2>
+<p class="caption">
+    Each frame, the CPU physics engine runs multiple substeps. Within each substep: apply gravity,
+    update positions, then resolve collisions (wall, floor/ceiling, sphere-sphere), and apply
+    damping. Substep count adapts to particle count for frame rate.
+</p>
+<div class="diagram-card">
+    <pre class="mermaid">
+    graph TD
+        subgraph "Per Frame (120fps)"
+            DT["Compute dt<br/><i>clamped to 1/30s max</i>"]
+            EULER["Read container euler angle<br/><i>presentation.eulerAngles.x</i>"]
+        end
+
+        subgraph "Per Substep (4x)"
+            GRAV["Apply gravity<br/><i>gravity=max(5.0/duration, 0.15),<br/>rotated by container angle</i>"]
+            POS["Update positions<br/><i>p += v * subDt</i>"]
+            WALL["Wall collision<br/><i>radial vs innerRadiusAt(y)</i>"]
+            FLOOR["Floor/ceiling bounds<br/><i>Y clamp with restitution</i>"]
+            SPHERE["Sphere-sphere collision<br/><i>O(N squared) sequential</i>"]
+            NECK["Neck friction zone<br/><i>neckDamping=duration*0.02<br/>where abs(y) &lt; 0.10</i>"]
+            DAMP["Velocity-dependent damping<br/><i>flow=0.92, settle=0.05<br/>blend by speed/0.15</i>"]
+        end
+
+        SYNC["Sync SCNNode positions"]
+
+        DT --> EULER --> GRAV --> POS --> WALL --> FLOOR --> SPHERE --> NECK --> DAMP
+        DAMP -->|"repeat substeps"| GRAV
+        DAMP --> SYNC
+
+        style DT fill:#2e2620,stroke:#8b6e3a,color:#e8ddd0
+        style EULER fill:#2e2620,stroke:#8b6e3a,color:#e8ddd0
+        style GRAV fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style POS fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style WALL fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style FLOOR fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style SPHERE fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style NECK fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style DAMP fill:#2e2620,stroke:#8b6e3a,color:#e8ddd0
+        style SYNC fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+    </pre>
+</div>
+<div class="note">
+    <strong>CPU limit:</strong> Capped at 250 particles. O(N&sup2;) collision runs smoothly
+    at 120fps on A17 Pro. Use GPU mode for higher counts (up to 10,000) or Metal mode
+    (up to 50,000). <strong>Gravity scaling:</strong> gravity is set per frame by the
+    Coordinator: <code>max(5.0/duration, 0.15)</code>. At 5s: 1.0 (full). At 30s: ~0.17.
+    Two damping layers: neck friction near the constriction
+    and velocity-dependent damping (blend between flow and settle based on speed).
+    CPU&rsquo;s sequential collision converges naturally &mdash; no sleep system needed.
+    <strong>Spawn overflow:</strong> the hex lattice fills from the bottom up to y=-0.10
+    (well below the neck); at low counts it stops early. Particles that cannot fit in the hex
+    lattice are placed randomly in the lower chamber (y=-0.48 to -0.10), never near the neck
+    or in the upper chamber.
+</div>
+
+<!-- 5. GPU PHYSICS ENGINE (METAL COMPUTE) -->
+
+<h2>5. GPU Physics Engine (Metal Compute)</h2>
+<p class="caption">
+    The GPU engine parallelises the same physics across Metal compute threads. Each thread
+    handles one particle: reads all others from buffer A, resolves all collisions, writes
+    result to buffer B. Buffers swap after each substep. Double-buffering prevents race
+    conditions in parallel collision resolution.
+</p>
+<div class="diagram-card">
+    <pre class="mermaid">
+    graph TD
+        subgraph "Per Frame (120fps)"
+            DT2["Compute dt, euler angle"]
+        end
+
+        subgraph "Per Substep (adaptive: 4/3/2/1)"
+            UNI["Fill PhysicsUniforms<br/><i>gravity=max(5.0/duration, 0.15),<br/>neckDamping=duration*0.02,<br/>neckHalfHeight=0.10,<br/>damping, subDt, euler</i>"]
+            ENC["Encode physicsStep kernel<br/><i>bufferA read, bufferB write</i>"]
+            DISP["Dispatch N threads<br/><i>256 per threadgroup</i>"]
+            WAIT["waitUntilCompleted"]
+            SWAP["Swap bufferA / bufferB"]
+        end
+
+        subgraph "Per Thread (one particle)"
+            TSLEEP_CHK["Two-tier sleep check<br/><i>counter &gt; 30: deep sleep<br/>(staggered every 30 frames:<br/>verify floor or nearby particle<br/>at 1.05x dist, wake if none)<br/>counter 16-30: light sleep<br/>(O(N) scan: wake only if<br/>non-sleeping neighbor approaching)</i>"]
+            TGRAV["Apply rotated gravity"]
+            TPOS["Update position"]
+            TWALL["Wall collision<br/><i>256-entry profile lookup</i>"]
+            TFLOOR["Floor/ceiling clamp<br/><i>+ resting contact: zero vel.y<br/>if vel.y &lt; gravity*subDt*2</i>"]
+            TSPHERE["Chamber-asymmetric collision<br/><i>O(N squared): position correction<br/>0.25 everywhere; velocity impulse<br/>0.25 lower chamber only<br/>(upper: skip impulse, gravity drains)<br/>tracks contactCount for sleep</i>"]
+            TNECK["Neck friction<br/><i>neckDamping where abs(y) &lt; 0.10</i>"]
+            TDAMP["Chamber-dependent damping<br/><i>upper: flow only pow(0.92, subDt)<br/>lower: blend flow/settle by speed</i>"]
+            TCUTOFF["Velocity cutoff<br/><i>lower chamber + hasSupport only:<br/>snap to zero if speed &lt; 0.01<br/>free-falling particles never frozen<br/>(upper must accumulate gravity)</i>"]
+            TSLEEP["Sleep counter update<br/><i>upper chamber: always 0 (awake)<br/>lower chamber + hasSupport:<br/>speed &lt; 0.08 increments counter<br/>no contacts: counter stays 0</i>"]
+        end
+
+        READ["readPositions() -> [GPUParticle]<br/><i>safe copy from bufferA</i>"]
+        SYNC2["Sync SCNNode positions<br/><i>under particleLock</i>"]
+
+        DT2 --> UNI --> ENC --> DISP --> WAIT --> SWAP
+        SWAP -->|"repeat substeps"| UNI
+        SWAP --> READ --> SYNC2
+
+        DISP -.->|"each thread"| TSLEEP_CHK --> TGRAV --> TPOS --> TWALL --> TFLOOR --> TSPHERE --> TNECK --> TDAMP --> TCUTOFF --> TSLEEP
+
+        style DT2 fill:#2e2620,stroke:#8b6e3a,color:#e8ddd0
+        style UNI fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style ENC fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style DISP fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style WAIT fill:#2e2620,stroke:#8b6e3a,color:#e8ddd0
+        style SWAP fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style TGRAV fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style TPOS fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style TWALL fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style TFLOOR fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style TSLEEP_CHK fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style TSPHERE fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style TNECK fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style TDAMP fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style TCUTOFF fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style TSLEEP fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style READ fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style SYNC2 fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+    </pre>
+</div>
+<div class="note">
+    <strong>Performance:</strong> GPU mode supports up to 10,000 particles.
+    Adaptive substeps: 4 for &le;1500, 3 for 1501-3000, 2 for 3001-10000, 1 for &gt;10000.
+    Default: GPU mode with 5,000 particles. Per-mode particle count persisted via UserDefaults.
+    Particles spawned in hex close-packed lattice (GranularSimulation.packedPositions).
+    <strong>Chamber-asymmetric collision:</strong> the critical fix for parallel GPU physics.
+    In packed piles, parallel collision impulses cancel gravity (each thread applies impulse
+    independently, unlike sequential CPU where forces propagate naturally). Lower chamber
+    (pos.y &lt; 0) gets full 0.25 position correction + 0.25 velocity impulse for stable
+    resting piles. Upper chamber (pos.y &gt; 0) gets 0.25 position correction but NO velocity
+    impulse &mdash; gravity must dominate to drain the packed pile through the neck.
+    <strong>Chamber-dependent damping:</strong> upper chamber uses flow-only damping
+    (<code>pow(0.92, subDt)</code>) to preserve natural fall; lower chamber blends between
+    flow and aggressive settle damping (<code>pow(0.05, subDt)</code>) based on speed.
+    <strong>Gravity scaling:</strong> gravity is no longer constant &mdash; it scales inversely
+    with duration: <code>max(5.0/duration, 0.15)</code>. At 5s: full gravity (1.0). At 30s:
+    reduced (~0.17). Both CPU and GPU engines receive the scaled gravity value per frame
+    from the Coordinator.
+    <strong>Contact-based sleep:</strong> the GPU sleep/freeze system tracks
+    <code>contactCount</code> during the O(N&sup2;) collision loop. Only particles with
+    contacts (<code>hasSupport = contactCount &gt; 0</code>) can have velocity zeroed or
+    enter sleep. Free-falling particles (zero contacts) never freeze, preventing mid-air
+    freezing artifacts.
+    <strong>Velocity cutoff lower-chamber + hasSupport only:</strong> snap to zero if
+    speed &lt; 0.01, but only when the particle is in the lower chamber AND has contacts.
+    Upper-chamber particles must accumulate gravity to begin draining.
+    <strong>Sleep counter lower-chamber + hasSupport only:</strong> upper-chamber particles
+    always have counter=0 (always awake, must drain). Lower chamber uses threshold 0.08
+    but only increments when <code>hasSupport</code> is true.
+    Two-tier sleep system: counter 16&ndash;30 is &ldquo;light sleep&rdquo; (O(N) wake-up
+    check, wakes only if a non-sleeping neighbor is approaching fast;
+    <code>sleepContactCount</code> was removed from light sleep because it caused
+    oscillation/blur through the glass &mdash; support-loss detection is deferred to deep sleep).
+    Counter &gt;30 is &ldquo;deep sleep&rdquo; (<strong>staggered support check</strong>
+    every 30 frames, offset by thread ID, so ~N/30 particles check per frame: floor
+    contact counts as support via cheap check, otherwise scans for nearby particles within
+    1.05&times; touching distance; if no support found, particle wakes and falls within ~0.5s.
+    Staggering reduces deep sleep overhead from O(N&sup2;) to O(N&sup2;/30) per frame).
+    <code>snapAfterFlip</code> also resets all counters to 0.
+    <strong>Floor/ceiling resting contact:</strong> <code>vel.y</code> zeroed if
+    <code>abs(vel.y) &lt; gravity * subDt * 2.0</code>, preventing micro-bouncing on flat surfaces.
+</div>
+
+<!-- 6. METAL INSTANCED MODE (MESH EXPANSION) -->
+
+<h2>6. Metal Instanced Mode (Mesh Expansion)</h2>
+<p class="caption">
+    Metal mode eliminates the CPU readback bottleneck. The same GPU physics runs, then a
+    second compute kernel expands each particle into a subdivided icosahedron mesh (42 verts,
+    80 faces). SceneKit renders the expanded mesh geometry directly
+    from the GPU buffer &mdash; zero CPU copies. Supports up to 50,000 particles.
+    Uses Lambert material with <code>UIColor(white: 0.78)</code> diffuse to match CPU/GPU brightness.
+    When random colors is enabled, a per-particle color buffer feeds into the mesh expansion
+    kernel, producing per-vertex color via <code>SCNGeometrySource(.color)</code>.
+</p>
+<div class="diagram-card">
+    <pre class="mermaid">
+    graph TD
+        subgraph "Per Frame"
+            PHYS["Physics Compute<br/><i>physicsStep kernel<br/>(same as GPU mode)</i>"]
+            MESH["Mesh Expansion Compute<br/><i>expandMeshes kernel<br/>particle &rarr; 42 icosahedron verts</i>"]
+            GEOM["Rebuild SCNGeometry<br/><i>SCNGeometrySource(buffer:)<br/>wraps vertex MTLBuffer<br/>+ SCNGeometrySource(.color)</i>"]
+        end
+
+        subgraph "Mesh Expansion Per Thread"
+            READ_P["Read particle position<br/><i>from physics bufferA</i>"]
+            READ_C["Read particle color<br/><i>from colorBuffer (uchar4)</i>"]
+            WRITE_V["Write MeshVertex<br/><i>packed_float3 pos + normal<br/>+ uchar4 color = 28 bytes</i>"]
+        end
+
+        subgraph "Rendering"
+            NODE["rendererNode<br/><i>child of hourglassContainer</i>"]
+            SCNR["SceneKit Standard Pipeline<br/><i>Lambert material (white: 0.78),<br/>depth, lighting<br/>per-vertex color override</i>"]
+        end
+
+        PHYS --> MESH --> GEOM --> NODE --> SCNR
+        MESH -.->|"N * 42 threads"| READ_P --> READ_C --> WRITE_V
+
+        style PHYS fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style MESH fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style GEOM fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style READ_P fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style READ_C fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style WRITE_V fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style NODE fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style SCNR fill:#2e2620,stroke:#8b6e3a,color:#e8ddd0
+    </pre>
+</div>
+<div class="note">
+    <strong>Key difference from GPU mode:</strong> GPU mode reads positions back to CPU
+    (<code>readPositions()</code>) and updates N individual SCNNodes per frame. Metal mode
+    keeps everything on GPU &mdash; the mesh expansion kernel writes vertices that SceneKit
+    reads directly via <code>SCNGeometrySource(buffer:)</code>. One geometry node replaces
+    N sphere nodes. The index buffer (icosahedron topology &times; N particles) is pre-computed
+    and static; only the vertex buffer changes each frame. Uses Lambert material with
+    <code>UIColor(white: 0.78)</code> diffuse to match CPU/GPU brightness.
+    <strong>Per-vertex color:</strong> <code>MeshVertex</code> is 28 bytes
+    (<code>packed_float3 position</code> + <code>packed_float3 normal</code> + <code>uchar4 color</code>).
+    When random colors is enabled, <code>MetalPhysicsEngine.setupColors(random:)</code> fills
+    a <code>colorBuffer</code> with per-particle <code>uchar4</code> RGBA values. The
+    <code>expandMeshes</code> kernel reads each particle&rsquo;s color and writes it into every
+    vertex of that particle&rsquo;s icosahedron. SceneKit picks up the color via an
+    <code>SCNGeometrySource(.color)</code> semantic on the same vertex buffer.
+</div>
+
+<!-- 7. DYNAMIC GLASS GEOMETRY -->
+
+<h2>7. Dynamic Glass Geometry</h2>
+<p class="caption">
+    The hourglass glass shape is defined by control points, interpolated into a smooth
+    profile, then revolved around the Y axis. The neck width adjusts dynamically based on
+    particle size so exactly one ball fits through at a time.
+</p>
+<div class="diagram-card">
+    <pre class="mermaid">
+    graph TD
+        PC["Particle Count + Size<br/><i>CPU: 50-250, GPU: 50-10k,<br/>Metal: 50-50k, size: 0.5x-1.5x</i>"] -->|"radiusForCount(count, sizeMultiplier)"| PR["Particle Radius<br/><i>0.030 * (100/N)^(1/3)<br/>* packing correction * sizeMultiplier</i>"]
+        PR -->|"r + wall + clearance"| NR["Neck Radius<br/><i>setNeckRadius()</i>"]
+        NR --> CP["11 Control Points<br/><i>dynamic neck point</i>"]
+        CP -->|"Catmull-Rom spline"| SP["~80 Smooth Points"]
+        SP -->|"rotate around Y"| SR["Surface of Revolution<br/><i>64 angular segments</i>"]
+        SR --> OG["Outer Glass<br/><i>Blinn, transparent</i>"]
+        SR --> IG["Inner Glass<br/><i>invisible collider</i>"]
+        SP -->|"activeInnerProfile"| IR["innerRadiusAt(y)<br/><i>wall collision lookup</i>"]
+        IR -->|"sample 256 points"| LUT["GPU Profile Table<br/><i>256-entry MTLBuffer</i>"]
+
+        style PC fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style PR fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style NR fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style CP fill:#2e2620,stroke:#8b6e3a,color:#e8ddd0
+        style SP fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style SR fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style OG fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style IG fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style IR fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style LUT fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+    </pre>
+</div>
+
+<!-- 8. FLIP ANIMATION SEQUENCE -->
+
+<h2>8. Flip Animation Sequence</h2>
+<p class="caption">
+    The flip exploits the glass's Y-axis symmetry: rotating 180 degrees produces an identical
+    shape. Flip start rebuilds particles only if count/size/color settings changed. Particles
+    tumble with real physics as gravity rotates with the container. Snap-back runs on CPU
+    or GPU depending on active physics mode.
+</p>
+<div class="diagram-card">
+    <pre class="mermaid">
+    sequenceDiagram
+        participant U as User
+        participant VM as TimerViewModel
+        participant SV as SceneView
+        participant HS as HourglassScene
+        participant PHY as Physics Engine
+
+        U->>VM: tap Start
+        VM->>VM: startFlip() isFlipping=true
+        SV->>HS: flipAndStart(completion)
+        HS->>HS: SCNAction.rotateBy(x: pi, 1.2s)
+        Note over HS,PHY: Each frame during rotation:
+        PHY->>PHY: read presentation.eulerAngles.x
+        PHY->>PHY: compute rotated gravity
+        PHY->>PHY: step physics (balls tumble)
+        HS->>HS: sync node positions (CPU/GPU)<br/>or rebuild mesh geometry (Metal)
+        Note over HS: rotation completes
+        HS->>HS: snap eulerAngles to (0,0,0)
+        HS->>PHY: snapAfterFlip() (CPU or GPU kernel)
+        HS->>HS: sync positions / rebuild geometry
+        HS->>VM: completion -> completeFlip()
+        VM->>VM: isRunning=true, start timer task
+    </pre>
+</div>
+
+<!-- 9. DATA FLOW -->
+
+<h2>9. Data Flow</h2>
+<p class="caption">
+    Published properties flow from the ViewModel through the SwiftUI bridge into SceneKit.
+    The render delegate dispatches to CPU, GPU, or Metal instanced physics and syncs
+    positions every frame. Per-mode particle counts, duration, and random colors preference
+    are persisted independently in UserDefaults. The Coordinator computes gravity scaling
+    (<code>max(5.0/duration, 0.15)</code>) each frame and sets it on both CPU and GPU engines.
+    CLI launch arguments (<code>-mode</code>, <code>-count</code>, <code>-size</code>,
+    <code>-dumpspawn</code>) override persisted settings on launch for automated testing.
+    Manual Reset respawns particles; natural completion leaves them at rest.
+    Flip start rebuilds only if settings changed.
+</p>
+<div class="diagram-card">
+    <pre class="mermaid">
+    graph TD
+        UD["UserDefaults<br/><i>physicsMode, duration,<br/>randomColors,<br/>particleCount_CPU/GPU/Metal,<br/>particleSize_CPU/GPU/Metal</i>"]
+        CLI2["CLI Args<br/><i>-mode, -count, -size,<br/>-dumpspawn</i>"]
+        VM["TimerViewModel<br/><i>@Published: duration (5-30s),<br/>elapsed, isRunning, isFlipping,<br/>isComplete, particleCount,<br/>particleSizeMultiplier,<br/>physicsMode, randomColors</i>"]
+
+        UD -->|"load on init"| VM
+        CLI2 -.->|"override on launch"| VM
+        VM -->|"save on change"| UD
+        VM -->|"SwiftUI binding"| CV["ContentView<br/><i>top-left: color toggle<br/>top-right: mode picker + particle slider<br/>+ size slider<br/>bottom-left: readout<br/>bottom-right: duration slider (5-30s)<br/>+ presets (5s/10s/30s) + start/reset</i>"]
+        VM -->|"updateUIView()"| COORD["Coordinator<br/><i>tracks physicsMode,<br/>isFlipping, particleCount,<br/>sizeMultiplier, randomColors,<br/>currentDuration,<br/>sets neckDamping + gravityScale<br/>(max(5.0/duration, 0.15)) each frame</i>"]
+        COORD -->|"renderer(updateAtTime:)"| HS["HourglassScene"]
+        HS -->|"CPU mode"| CPU["GranularSimulation<br/><i>O(N squared) single thread<br/>+ SCNNode sync<br/>+ Lambert, 24-color palette</i>"]
+        HS -->|"GPU mode"| GPU["MetalPhysicsEngine<br/><i>Metal compute<br/>+ readPositions() + SCNNode sync<br/>+ Lambert, 24-color palette</i>"]
+        HS -->|"Metal mode"| MTL["MetalPhysicsEngine<br/><i>Metal compute<br/>+ setupColors(random:)<br/>+ expandMeshes() with colorBuffer<br/>+ SCNGeometry with per-vertex color</i>"]
+
+        style UD fill:#2e2620,stroke:#8b6e3a,color:#e8ddd0
+        style CLI2 fill:#2e2620,stroke:#8b6e3a,color:#e8ddd0
+        style VM fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style CV fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style COORD fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style HS fill:#2e2620,stroke:#8b6e3a,color:#e8ddd0
+        style CPU fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style GPU fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style MTL fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+    </pre>
+</div>
+
+<!-- 10. METAL COMPUTE ARCHITECTURE -->
+
+<h2>10. Metal Compute Architecture</h2>
+<p class="caption">
+    The MetalPhysicsEngine manages double-buffered particle data, a pre-computed profile
+    lookup table, a per-particle color buffer, and dispatches compute kernels via MTLCommandQueue.
+    Three pipelines: physics step, snap-after-flip, and mesh expansion for Metal instanced mode.
+    The color buffer is populated by <code>setupColors(random:)</code> and read by the
+    <code>expandMeshes</code> kernel to produce per-vertex color in each MeshVertex (28 bytes).
+</p>
+<div class="diagram-card">
+    <pre class="mermaid">
+    graph TD
+        ME["MetalPhysicsEngine"] -->|"owns"| DEV["MTLDevice"]
+        ME -->|"owns"| CQ["MTLCommandQueue"]
+        ME -->|"owns"| PP["physicsPipeline<br/><i>MTLComputePipelineState</i>"]
+        ME -->|"owns"| SP2["snapPipeline<br/><i>MTLComputePipelineState</i>"]
+        ME -->|"owns"| MP["meshExpansionPipeline<br/><i>MTLComputePipelineState</i>"]
+
+        ME -->|"double buffer"| BA["bufferA<br/><i>MTLBuffer shared</i>"]
+        ME -->|"double buffer"| BB["bufferB<br/><i>MTLBuffer shared</i>"]
+        ME -->|"wall profile"| PB["profileBuffer<br/><i>256 floats</i>"]
+        ME -->|"per-particle color"| CB["colorBuffer<br/><i>N * uchar4 RGBA</i>"]
+        ME -->|"mesh output"| VB["meshVertexBuffer<br/><i>N * 42 MeshVertex (28B each)</i>"]
+        ME -->|"static indices"| IB["meshIndexBuffer<br/><i>N * 240 UInt32</i>"]
+
+        BA -->|"read"| K["physicsStep kernel"]
+        BB -->|"write"| K
+        PB -->|"lookup"| K
+
+        BA -->|"read"| MK["expandMeshes kernel"]
+        CB -->|"read"| MK
+        VB -->|"write"| MK
+
+        BA -->|"GPU mode only"| COPY["readPositions()<br/><i>safe copy to CPU</i>"]
+        K -->|"per thread"| T["GPUParticle<br/><i>float4 pos+r<br/>float4 vel+pad</i>"]
+        CB -.->|"setupColors(random:)"| SC["Per-particle RGBA<br/><i>random hue or golden sand</i>"]
+
+        style ME fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style DEV fill:#2e2620,stroke:#8b6e3a,color:#e8ddd0
+        style CQ fill:#2e2620,stroke:#8b6e3a,color:#e8ddd0
+        style PP fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style SP2 fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style MP fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style BA fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style BB fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style PB fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style CB fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style VB fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style IB fill:#2e2620,stroke:#8b6e3a,color:#e8ddd0
+        style K fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style MK fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style T fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style COPY fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style SC fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+    </pre>
+</div>
+
+<!-- 11. THREE-MODE COMPARISON -->
+
+<h2>11. Three-Mode Comparison</h2>
+<p class="caption">
+    The three modes share the same physics (gravity, collision, neck friction) but differ
+    in where computation happens and how particles are rendered.
+</p>
+<div class="diagram-card">
+    <pre class="mermaid">
+    graph TD
+        subgraph "CPU Mode (up to 250)"
+            C1["CPU Physics<br/><i>O(N squared) single thread</i>"]
+            C2["N SCNNodes<br/><i>shared or per-node SCNSphere<br/>Lambert material<br/>24-color palette (random colors)</i>"]
+            C1 -->|"position sync"| C2
+        end
+
+        subgraph "GPU Mode (up to 10k)"
+            G1["GPU Physics<br/><i>Metal compute kernel</i>"]
+            G2["readPositions()<br/><i>CPU copy from bufferA</i>"]
+            G3["N SCNNodes<br/><i>shared or per-node SCNSphere<br/>Lambert material<br/>24-color palette (random colors)</i>"]
+            G1 --> G2 -->|"position sync"| G3
+        end
+
+        subgraph "Metal Mode (up to 50k)"
+            M1["GPU Physics<br/><i>Metal compute kernel</i>"]
+            M2["expandMeshes<br/><i>Metal compute kernel<br/>+ colorBuffer lookup</i>"]
+            M3["1 SCNNode<br/><i>SCNGeometry from MTLBuffer<br/>Lambert material (white: 0.78)<br/>per-vertex color (28B MeshVertex)</i>"]
+            M1 --> M2 -->|"zero copy"| M3
+        end
+
+        style C1 fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style C2 fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style G1 fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style G2 fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style G3 fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style M1 fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style M2 fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style M3 fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+    </pre>
+</div>
+
+<!-- 12. TEST MODE -->
+
+<h2>12. Test Mode &amp; Test Target</h2>
+<p class="caption">
+    Launch arguments enable automated testing without manual interaction.
+    <code>-test</code> sets a 10-second duration, auto-starts the timer, and on completion
+    dumps all particle positions and velocities to
+    <code>Documents/test_results.txt</code>.
+    <code>-autostart</code> just auto-starts the timer without the data dump.
+    <code>-multicolor</code> enables the random colors mode on launch.
+    <code>-mode CPU|GPU|Metal</code> overrides the physics mode.
+    <code>-count N</code> overrides the particle count.
+    <code>-size X</code> overrides the particle size multiplier.
+    <code>-dumpspawn</code> enables spawn position logging.
+</p>
+<p class="caption">
+    The <strong>ShiftingSandsTests</strong> target contains 16 unit tests for the physics engines
+    (10 CPU, 6 GPU):
+</p>
+<div class="diagram-card">
+    <pre class="mermaid">
+    graph TD
+        TT["ShiftingSandsTests Target<br/><i>16 tests total</i>"]
+        TT --> CT["CPUPhysicsTests (10 tests)<br/><i>gravity, floor, collision,<br/>flip, drain, settle,<br/>spawnPacking, spawnSizes,<br/>spawnTopLayerFlat,<br/>particlesStayInsideGlass</i>"]
+        TT --> GT["GPUPhysicsTests (6 tests)<br/><i>gravity, floor, flip,<br/>drain, settle,<br/>sleepingParticleWakesWhenSupportRemoved</i>"]
+        CT -->|"tests"| GS["GranularSimulation"]
+        GT -->|"tests"| ME["MetalPhysicsEngine"]
+
+        style TT fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style CT fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style GT fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style GS fill:#2e2620,stroke:#8b6e3a,color:#e8ddd0
+        style ME fill:#2e2620,stroke:#8b6e3a,color:#e8ddd0
+    </pre>
+</div>
+
+<!-- 13. PHYSICS PRIMER -->
+
+<h2>13. Physics Primer</h2>
+<p class="caption">
+    This section explains the mathematical foundations behind ShiftingSands &mdash; how shapes are
+    built, how particles move, how collisions work, and how all of this maps onto GPU parallel
+    execution. You only need basic algebra to follow along.
+</p>
+
+<h3 style="color: var(--accent); margin-top: 1.5rem;">Building the Hourglass Shape</h3>
+
+<p class="caption">
+    The hourglass isn&rsquo;t loaded from a 3D model file &mdash; it&rsquo;s built entirely from
+    maths. The process has two stages: <strong>define a 2D profile curve</strong>, then
+    <strong>spin it around an axis</strong> to make a 3D surface.
+</p>
+
+<p class="caption">
+    <strong>Stage 1: The profile curve.</strong> We place 11 control points on a 2D plane
+    that trace the outline of half the hourglass &mdash; wide at the top, narrow at the neck,
+    wide at the bottom. But 11 points would give a jagged polygon. To make it smooth, we use
+    <strong>Catmull-Rom spline interpolation</strong>: a formula that draws a smooth curve
+    passing exactly through each control point. Between any two points, the curve considers
+    the neighbouring points on either side to calculate a gentle, natural-looking path. The
+    result is ~80 smooth points that trace a flowing hourglass silhouette.
+</p>
+
+<p class="caption">
+    <strong>Stage 2: Surface of revolution.</strong> Imagine holding that 2D profile vertically
+    and spinning it 360&deg; around a central axis, like a potter&rsquo;s wheel. Every point on
+    the profile traces a circle. We sample 64 positions around each circle, creating a mesh of
+    triangles that forms the 3D glass surface. For a profile point at height <em>y</em> and
+    distance <em>r</em> from the axis, each of the 64 positions is:
+</p>
+
+<div class="note">
+    <strong>Surface point at angle &theta;:</strong><br>
+    <code>x = r &times; cos(&theta;)</code><br>
+    <code>y = y</code> (unchanged)<br>
+    <code>z = r &times; sin(&theta;)</code><br><br>
+    where &theta; goes from 0 to 360&deg; in 64 equal steps. This produces ~80 &times; 64 = 5,120 vertices forming the glass surface.
+</div>
+
+<p class="caption">
+    The <strong>dynamic neck</strong> adjusts automatically based on particle size. When
+    particle count changes, we recalculate the radius and set the neck just wide enough for
+    exactly one ball to fit through: <code>neckRadius = particleRadius + wallThickness + 0.002</code>.
+    This creates natural single-file flow, just like a real hourglass.
+</p>
+
+<h3 style="color: var(--accent); margin-top: 1.5rem;">Representing Particles</h3>
+
+<p class="caption">
+    Each particle (&ldquo;grain of sand&rdquo;) is a perfect sphere stored as just three properties:
+</p>
+
+<div class="note">
+    <strong>position</strong> = (x, y, z) &mdash; where the centre of the sphere is in 3D space<br>
+    <strong>velocity</strong> = (vx, vy, vz) &mdash; how fast and in which direction it&rsquo;s moving<br>
+    <strong>radius</strong> = r &mdash; the size of the sphere<br><br>
+    That&rsquo;s it. Every frame, we update position and velocity using simple equations, and all the
+    complex behaviour &mdash; tumbling, piling, flowing &mdash; emerges from these updates.
+</div>
+
+<h3 style="color: var(--accent); margin-top: 1.5rem;">Gravity: Making Things Fall</h3>
+
+<p class="caption">
+    Gravity pulls particles downward. Newton tells us <code>F = m &times; g</code>, but since all
+    our particles have equal mass, we can simplify. Each time step (a tiny fraction of a second,
+    called <em>dt</em>), we update velocity then position:
+</p>
+
+<div class="note">
+    <strong>Step 1 &mdash; Accelerate:</strong> <code>velocity.y = velocity.y &minus; gravity &times; dt</code><br>
+    <strong>Step 2 &mdash; Move:</strong>&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;<code>position = position + velocity &times; dt</code><br><br>
+    This is <strong>Euler integration</strong> &mdash; the simplest way to simulate motion. Each tick, gravity
+    adds a small downward nudge to velocity, and the particle moves according to its current velocity.
+    Over many tiny steps, you get a smooth parabolic arc, just like a thrown ball in real life.
+</div>
+
+<p class="caption">
+    During the flip animation, the hourglass container rotates. Gravity always points straight
+    down in the real world, but the particles live inside the rotating container. We transform
+    gravity into the container&rsquo;s local frame using trigonometry:
+</p>
+
+<div class="note">
+    <strong>Rotated gravity</strong> (container tilted by angle &theta; around the X axis):<br>
+    <code>gravity_y = &minus;g &times; cos(&theta;)</code><br>
+    <code>gravity_z = g &times; sin(&theta;)</code><br><br>
+    At &theta;=0 (upright): gravity is purely downward (&minus;g). At &theta;=90&deg; (sideways):
+    gravity is purely sideways. At &theta;=180&deg; (flipped): gravity is upward (+g) in the
+    container&rsquo;s frame, which makes particles &ldquo;fall&rdquo; toward what was the top.
+</div>
+
+<h3 style="color: var(--accent); margin-top: 1.5rem;">Collision Detection: Did Two Balls Touch?</h3>
+
+<p class="caption">
+    Two spheres overlap when the distance between their centres is less than the sum of their radii.
+    This is the fundamental test behind all the physics:
+</p>
+
+<div class="diagram-card">
+    <pre class="mermaid">
+    graph LR
+        A["Particle A<br/><i>position (x₁, y₁, z₁)<br/>radius r₁</i>"] --- D["distance = √((x₂−x₁)² + (y₂−y₁)² + (z₂−z₁)²)"] --- B["Particle B<br/><i>position (x₂, y₂, z₂)<br/>radius r₂</i>"]
+        D -->|"distance < r₁ + r₂?"| C["COLLISION!<br/><i>overlap = r₁ + r₂ − distance</i>"]
+
+        style A fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style B fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style D fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style C fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+    </pre>
+</div>
+
+<div class="note">
+    <strong>O(N&sup2;) brute force:</strong> With N particles, we check every possible pair.
+    That&rsquo;s N &times; (N&minus;1) / 2 distance calculations per step. At 250 particles: ~31,000 checks.
+    At 10,000 particles: ~50 million checks. At 50,000: ~1.25 billion. This is where
+    the GPU becomes essential &mdash; it can perform millions of checks in parallel.
+</div>
+
+<h3 style="color: var(--accent); margin-top: 1.5rem;">Collision Response: What Happens When Balls Collide</h3>
+
+<p class="caption">
+    When two spheres overlap, we need to do two things: <strong>push them apart</strong> so they
+    stop overlapping, and <strong>exchange velocity</strong> so they bounce realistically.
+</p>
+
+<div class="note">
+    <strong>1. Position correction (push apart):</strong><br>
+    The collision normal is the direction from one centre to the other: <code>normal = (posA &minus; posB) / distance</code>.
+    We push each particle away along this direction by half the overlap:<br>
+    <code>posA = posA + normal &times; (overlap &times; 0.5)</code><br>
+    <code>posB = posB &minus; normal &times; (overlap &times; 0.5)</code><br><br>
+
+    <strong>2. Velocity impulse (bounce):</strong><br>
+    We calculate how fast the particles are approaching each other along the collision normal:<br>
+    <code>approachSpeed = dot(velA &minus; velB, normal)</code><br><br>
+    If <code>approachSpeed &lt; 0</code>, they&rsquo;re moving toward each other. We apply an impulse
+    that reverses this relative motion, scaled by the <strong>restitution</strong> (bounciness, set
+    very low at 0.02 &mdash; sand doesn&rsquo;t bounce much):<br>
+    <code>impulse = &minus;(1 + restitution) &times; approachSpeed &times; 0.5</code><br>
+    <code>velA = velA + normal &times; impulse</code><br>
+    <code>velB = velB &minus; normal &times; impulse</code><br><br>
+
+    The 0.5 factors ensure each particle gets half the correction. The result: particles that
+    collide gently come to rest against each other; particles that collide fast bounce apart.
+</div>
+
+<h3 style="color: var(--accent); margin-top: 1.5rem;">Wall Collision: The Symmetry Trick</h3>
+
+<p class="caption">
+    The hourglass glass is a surface of revolution &mdash; perfectly symmetric around the Y axis.
+    This lets us reduce the 3D wall collision to a simple 2D check:
+</p>
+
+<div class="note">
+    <strong>1. Compute radial distance:</strong> <code>radial = &radic;(x&sup2; + z&sup2;)</code><br>
+    This is how far the particle is from the central axis, ignoring height.<br><br>
+    <strong>2. Look up glass radius:</strong> <code>glassR = innerRadiusAt(y)</code><br>
+    For the particle&rsquo;s current height, what is the glass inner radius? (On CPU: search the ~80
+    profile points. On GPU: a 256-entry lookup table for instant access.)<br><br>
+    <strong>3. Compare:</strong> If <code>radial &gt; glassR &minus; particleRadius</code>, the
+    particle has hit the wall. Push it inward, reflect its outward velocity, and apply friction
+    to its tangential (sliding) velocity.<br><br>
+    Because of the Y-axis symmetry, we never need to check individual triangles of the glass
+    mesh &mdash; just one distance comparison per particle per step.
+</div>
+
+<h3 style="color: var(--accent); margin-top: 1.5rem;">Damping: Bringing Things to Rest</h3>
+
+<p class="caption">
+    Without damping, particles would bounce forever. Real sand loses energy through internal
+    friction and deformation. We simulate this with <strong>velocity damping</strong> &mdash;
+    each step, we multiply velocity by a factor slightly less than 1:
+</p>
+
+<div class="note">
+    <strong>Flow damping:</strong> <code>velocity = velocity &times; 0.92<sup>dt</sup></code> &mdash;
+    gentle, preserves natural arc of falling particles<br>
+    <strong>Settle damping:</strong> <code>velocity = velocity &times; 0.05<sup>dt</sup></code> &mdash;
+    aggressive, quickly kills jitter when particles are nearly still<br><br>
+    The simulation <strong>blends</strong> between these based on speed. Fast-moving particles
+    (falling, flowing) get gentle damping. Slow-moving particles (settling into a pile) get
+    aggressive damping. The blend formula:<br>
+    <code>t = min(speed / 0.15, 1.0)</code><br>
+    <code>dampFactor = settleDamp + (flowDamp &minus; settleDamp) &times; t</code><br><br>
+    At full speed (t=1): almost pure flow damping. At rest (t=0): almost pure settle damping.
+</div>
+
+<p class="caption">
+    <strong>Neck friction</strong> adds extra damping near the hourglass constriction (where
+    <code>|y| &lt; 0.10</code>). The closer to the centre, the stronger the damping. This
+    controls flow rate &mdash; at short timer durations the friction is mild and particles
+    stream through; at longer durations it&rsquo;s stronger and they trickle.
+</p>
+
+<h3 style="color: var(--accent); margin-top: 1.5rem;">Substeps: Accuracy vs Speed</h3>
+
+<p class="caption">
+    The screen refreshes 120 times per second (on iPhone&rsquo;s ProMotion display). Each
+    frame, we don&rsquo;t just run physics once &mdash; we subdivide the frame into multiple
+    <strong>substeps</strong>. If the frame time is 1/120th of a second and we use 4 substeps,
+    each substep simulates 1/480th of a second. Smaller steps mean:
+</p>
+
+<div class="note">
+    <strong>More accurate collisions</strong> &mdash; fast particles can&rsquo;t &ldquo;tunnel&rdquo;
+    through each other between checks<br>
+    <strong>More stable piles</strong> &mdash; small position corrections add up smoothly<br>
+    <strong>But more computation</strong> &mdash; 4 substeps means 4&times; the collision checks<br><br>
+    The simulation adapts: 4 substeps at low counts, down to 1 substep at 50,000 particles.
+    Fewer substeps at high counts trades accuracy for keeping the frame rate smooth.
+</div>
+
+<h3 style="color: var(--accent); margin-top: 1.5rem;">Mapping Physics onto the GPU</h3>
+
+<p class="caption">
+    The CPU runs physics one particle at a time, sequentially. A GPU has thousands of small
+    processing cores that can all work at once. The key insight: <strong>each particle&rsquo;s
+    physics is mostly independent</strong>, so we can assign one GPU thread per particle and
+    run them all simultaneously.
+</p>
+
+<div class="diagram-card">
+    <pre class="mermaid">
+    graph TD
+        subgraph "CPU: Sequential"
+            CP1["Particle 1<br/><i>check all others</i>"]
+            CP2["Particle 2<br/><i>check all others</i>"]
+            CP3["Particle 3<br/><i>check all others</i>"]
+            CPN["Particle N<br/><i>check all others</i>"]
+            CP1 -->|"then"| CP2 -->|"then"| CP3 -->|"..."| CPN
+        end
+
+        subgraph "GPU: Parallel"
+            GP1["Thread 1<br/><i>Particle 1 vs all</i>"]
+            GP2["Thread 2<br/><i>Particle 2 vs all</i>"]
+            GP3["Thread 3<br/><i>Particle 3 vs all</i>"]
+            GPN["Thread N<br/><i>Particle N vs all</i>"]
+        end
+
+        T["Total time"] -.->|"CPU: N &times; work"| CP1
+        T -.->|"GPU: 1 &times; work<br/>(all threads parallel)"| GP1
+
+        style CP1 fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style CP2 fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style CP3 fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style CPN fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style GP1 fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style GP2 fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style GP3 fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style GPN fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style T fill:#2e2620,stroke:#8b6e3a,color:#e8ddd0
+    </pre>
+</div>
+
+<p class="caption">
+    <strong>Threadgroups.</strong> GPU threads are organised into groups of 256. If we have
+    10,000 particles, we dispatch ceil(10,000 / 256) = 40 threadgroups. The GPU hardware
+    schedules these across its cores automatically. Each thread runs the exact same program
+    (the <strong>compute kernel</strong>) but on a different particle.
+</p>
+
+<h3 style="color: var(--accent); margin-top: 1.5rem;">The Parallel Collision Problem</h3>
+
+<p class="caption">
+    There&rsquo;s a fundamental challenge when running collisions in parallel. On the CPU,
+    collisions are resolved <strong>sequentially</strong>: when particle A pushes particle B,
+    B&rsquo;s new position is immediately visible to the next collision check. Forces
+    <strong>propagate</strong> naturally through the pile.
+</p>
+
+<p class="caption">
+    On the GPU, every thread reads the <strong>same snapshot</strong> of all particle positions
+    (from the start of the substep). Thread 1 doesn&rsquo;t see Thread 2&rsquo;s corrections.
+    This causes two problems:
+</p>
+
+<div class="note">
+    <strong>Problem 1: Double-counting.</strong> When particles A and B collide, Thread A
+    pushes A away from B, and Thread B <em>independently</em> pushes B away from A. Both
+    apply the full correction. The fix: each thread applies only <strong>&frac14;</strong>
+    of the position correction and <strong>&frac14;</strong> of the velocity impulse (not
+    &frac12; like the CPU). Both threads independently apply their quarter, totalling
+    &frac12; combined &mdash; matching the CPU&rsquo;s result.<br><br>
+
+    <strong>Problem 2: Pile jamming.</strong> In a packed pile in the upper chamber, every
+    particle is touching several neighbours. On the CPU, gravity pulls the bottom particle
+    down, which creates space for the next one, and the pile drains naturally. On the GPU,
+    all particles simultaneously push each other apart, and these parallel impulses
+    <strong>cancel out gravity</strong> &mdash; the pile freezes in place.<br><br>
+
+    The fix: <strong>chamber-asymmetric collision</strong>. In the <strong>upper chamber</strong>
+    (waiting to drain), we apply position correction but <strong>skip velocity impulses</strong>.
+    Gravity is the only force that moves particles, so the pile drains naturally one particle
+    at a time. In the <strong>lower chamber</strong> (catching particles), we apply full
+    correction + impulse for stable settling.
+</div>
+
+<h3 style="color: var(--accent); margin-top: 1.5rem;">Double Buffering: Avoiding Race Conditions</h3>
+
+<p class="caption">
+    If every thread read and wrote to the <strong>same</strong> memory, chaos would ensue &mdash;
+    Thread 5 might read Particle 3&rsquo;s position while Thread 3 is halfway through writing
+    a new value. The solution is <strong>double buffering</strong>:
+</p>
+
+<div class="diagram-card">
+    <pre class="mermaid">
+    graph LR
+        subgraph "Substep 1"
+            RA["Buffer A<br/><i>READ all positions</i>"] --> WB["Buffer B<br/><i>WRITE new positions</i>"]
+        end
+        subgraph "Substep 2"
+            RB["Buffer B<br/><i>READ all positions</i>"] --> WA["Buffer A<br/><i>WRITE new positions</i>"]
+        end
+
+        WB -->|"swap"| RB
+
+        style RA fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style WB fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style RB fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style WA fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+    </pre>
+</div>
+
+<div class="note">
+    Every thread <strong>reads</strong> from one buffer and <strong>writes</strong> to the other.
+    After all threads finish, the buffers swap roles for the next substep. This guarantees
+    every thread sees a consistent, complete snapshot of particle positions &mdash; no
+    half-written data, no race conditions. The GPU hardware ensures all threads complete
+    before the swap via <code>waitUntilCompleted</code>.
+</div>
+
+<h3 style="color: var(--accent); margin-top: 1.5rem;">The Complete GPU Physics Pipeline</h3>
+
+<p class="caption">
+    Putting it all together, here&rsquo;s what happens for each particle in a single GPU substep.
+    Every particle runs this exact same sequence simultaneously on its own thread:
+</p>
+
+<div class="note">
+    <strong>1. Sleep check</strong> &mdash; if this particle has been still for 30+ frames
+    (deep sleep), perform a <strong>staggered support check</strong> (every 30 frames, offset
+    by thread ID, so ~N/30 particles check per frame): floor contact counts as support (cheap
+    check), otherwise scan for nearby particles within 1.05&times; touching distance; if no
+    support found, the particle wakes and falls. If still for 15&ndash;30 frames (light sleep),
+    scan neighbors; wake only if any non-sleeping neighbour is approaching fast
+    (<code>relVelNormal &lt; -0.05</code>). Support-loss detection is deferred to the deep
+    sleep staggered check. This saves GPU work when particles are at rest while ensuring
+    they wake when support is removed (within ~0.5s).<br><br>
+    <strong>2. Apply gravity</strong> &mdash; <code>vel += gravity &times; dt</code> (rotated during flip)<br>
+    <strong>3. Update position</strong> &mdash; <code>pos += vel &times; dt</code><br>
+    <strong>4. Wall collision</strong> &mdash; look up glass radius from 256-entry table, push inward if outside<br>
+    <strong>5. Floor/ceiling</strong> &mdash; clamp Y, detect resting contact<br>
+    <strong>6. Sphere-sphere</strong> &mdash; loop over ALL other particles (the O(N&sup2;) core),
+    apply &frac14; corrections, track contact count<br>
+    <strong>7. Neck friction</strong> &mdash; extra damping near the constriction<br>
+    <strong>8. Velocity damping</strong> &mdash; flow/settle blend based on speed and chamber<br>
+    <strong>9. Velocity cutoff</strong> &mdash; snap to zero if very slow AND in contact with something
+    (prevents mid-air freezing)<br>
+    <strong>10. Sleep counter</strong> &mdash; increment if slow and supported, reset if in upper chamber
+</div>
+
+<h3 style="color: var(--accent); margin-top: 1.5rem;">Mesh Expansion: From Numbers to Pixels</h3>
+
+<p class="caption">
+    Physics produces a list of positions. But to <strong>see</strong> particles, the GPU needs
+    triangle meshes. In CPU/GPU mode, SceneKit renders N individual sphere nodes. In Metal mode,
+    a second compute kernel (<code>expandMeshes</code>) converts each position into a small sphere
+    mesh on the GPU &mdash; no data ever leaves the graphics card.
+</p>
+
+<div class="note">
+    Each particle is expanded into a <strong>subdivided icosahedron</strong> &mdash; a 42-vertex,
+    80-triangle shape that closely approximates a sphere. For each of the 42 template vertices
+    (which lie on a unit sphere), the kernel computes:<br><br>
+    <code>vertexPosition = particleCentre + templateVertex &times; radius</code><br>
+    <code>vertexNormal = templateVertex</code> (points outward &mdash; enables lighting)<br><br>
+    At 10,000 particles: 420,000 vertices and 800,000 triangles, all generated in a single GPU pass.
+    At 50,000 particles: 2.1 million vertices and 4 million triangles.
+    SceneKit wraps the GPU buffer directly with <code>SCNGeometrySource(buffer:)</code> &mdash; zero
+    memory copies from GPU to CPU.
+</div>
+
+<h3 style="color: var(--accent); margin-top: 1.5rem;">Performance Summary</h3>
+
+<div class="diagram-card">
+    <pre class="mermaid">
+    graph TD
+        subgraph "CPU Mode"
+            CPU_CALC["1 core, sequential<br/><i>250 particles max<br/>~31k collision checks/step<br/>4 substeps = 124k checks/frame</i>"]
+        end
+
+        subgraph "GPU Mode"
+            GPU_CALC["Thousands of cores, parallel<br/><i>10,000 particles max<br/>~100M collision checks/step<br/>2 substeps = 200M checks/frame<br/>+ CPU readback for rendering</i>"]
+        end
+
+        subgraph "Metal Mode"
+            MTL_CALC["Thousands of cores, parallel<br/><i>50,000 particles max<br/>~2.5B collision checks/step<br/>1 substep = 2.5B checks/frame<br/>+ mesh expansion on GPU<br/>zero CPU readback</i>"]
+        end
+
+        style CPU_CALC fill:#2e2620,stroke:#c47d2e,color:#e8ddd0
+        style GPU_CALC fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+        style MTL_CALC fill:#2e2620,stroke:#d4a853,color:#e8ddd0
+    </pre>
+</div>
+
+<div class="note">
+    <strong>The GPU advantage:</strong> a single CPU core processes particles one at a time.
+    The GPU processes all particles simultaneously &mdash; 10,000 threads running the same
+    program on different data. The cost per frame stays roughly constant regardless of count
+    (up to hardware limits), because more particles simply means more threads, not more
+    sequential work. The tradeoff: parallel collision requires careful design (double buffering,
+    quarter corrections, chamber-asymmetric impulses) to avoid the race conditions and pile
+    jamming that arise when thousands of threads modify the same system simultaneously.
+</div>
+
+<footer>
+    ShiftingSands &mdash; Built with Claude Code &mdash; SceneKit &bull; SwiftUI &bull; Metal Compute &bull; Granular Physics
+</footer>
+
+<script>
+    mermaid.initialize({
+        startOnLoad: true,
+        theme: 'dark',
+        themeVariables: {
+            primaryColor: '#2e2620',
+            primaryTextColor: '#e8ddd0',
+            primaryBorderColor: '#d4a853',
+            lineColor: '#9b8d7e',
+            secondaryColor: '#241e17',
+            tertiaryColor: '#1a1410',
+            noteBkgColor: '#2e2620',
+            noteTextColor: '#e8ddd0',
+            noteBorderColor: '#d4a853'
+        }
+    });
+</script>
+
+</body>
+</html>

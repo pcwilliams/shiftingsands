@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShiftingSands — Development Tutorial</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #1a1410;
+            --surface: #241e17;
+            --surface2: #2e2620;
+            --border: #3d3228;
+            --text: #e8ddd0;
+            --muted: #9b8d7e;
+            --accent: #d4a853;
+            --accent2: #c47d2e;
+            --accent-dim: #8b6e3a;
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7;
+            font-size: 1rem;
+        }
+
+        header {
+            text-align: center;
+            padding: 72px 24px 56px;
+            background: linear-gradient(160deg, #1a1410 0%, #241e17 100%);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .app-icon {
+            width: 96px;
+            height: 96px;
+            border-radius: 22px;
+            background: linear-gradient(135deg, #2e2620 0%, #d4a853 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            font-size: 48px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        }
+
+        h1 {
+            font-size: 2.6rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            background: linear-gradient(90deg, var(--accent), var(--accent2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 12px;
+        }
+
+        header .subtitle {
+            color: var(--muted);
+            font-size: 1.1rem;
+            max-width: 560px;
+            margin: 0 auto 28px;
+        }
+
+        header .tags {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .tag {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 4px 14px;
+            font-size: 0.85rem;
+            color: var(--muted);
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        .step {
+            position: relative;
+            padding: 40px 0 40px 40px;
+            border-left: 2px solid var(--border);
+            margin-left: 20px;
+        }
+
+        .step::before {
+            content: attr(data-step);
+            position: absolute;
+            left: -16px;
+            top: 40px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: var(--accent);
+            color: var(--bg);
+            font-weight: 700;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .step h2 {
+            font-size: 1.35rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--text);
+        }
+
+        .step .summary {
+            color: var(--muted);
+            font-size: 0.95rem;
+            margin-bottom: 16px;
+        }
+
+        .prompt-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .prompt-card .label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--accent);
+            margin-bottom: 8px;
+        }
+
+        .prompt-card p {
+            font-size: 0.95rem;
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .response-card {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .response-card .label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--accent2);
+            margin-bottom: 8px;
+        }
+
+        .response-card p, .response-card li {
+            font-size: 0.95rem;
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .response-card ul {
+            padding-left: 20px;
+            margin-top: 8px;
+        }
+
+        .response-card li {
+            margin-bottom: 4px;
+        }
+
+        code {
+            font-family: "SF Mono", "Fira Code", monospace;
+            font-size: 0.88em;
+            background: var(--surface);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: var(--accent);
+        }
+
+        .insight {
+            background: var(--surface);
+            border-left: 4px solid var(--accent);
+            border-radius: 0 8px 8px 0;
+            padding: 12px 16px;
+            margin: 16px 0;
+            font-size: 0.9rem;
+        }
+
+        .insight strong {
+            color: var(--accent);
+        }
+
+        footer {
+            text-align: center;
+            padding: 48px 24px;
+            color: var(--muted);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border);
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="app-icon">&#9203;</div>
+    <h1>ShiftingSands</h1>
+    <p class="subtitle">
+        How a 3D hourglass with real granular physics was built entirely through
+        conversation with Claude Code — no 3D modelling tools, no imported assets.
+    </p>
+    <div class="tags">
+        <span class="tag">SceneKit</span>
+        <span class="tag">SwiftUI</span>
+        <span class="tag">Metal Compute</span>
+        <span class="tag">Procedural Geometry</span>
+        <span class="tag">Granular Physics</span>
+        <span class="tag">Catmull-Rom Splines</span>
+    </div>
+
+    <!-- Hero screenshot -->
+    <div style="text-align: center; margin: 32px 0 40px;">
+        <div style="display: inline-block; background: #000; border-radius: 40px; padding: 14px; box-shadow: 0 16px 64px rgba(0,0,0,0.6);">
+            <img src="sscrop.png" alt="ShiftingSands app running on iPhone 16 Pro" style="width: 260px; border-radius: 28px; display: block;" />
+        </div>
+        <p style="color: var(--muted); font-size: 0.85rem; margin-top: 16px;">The finished app running on iPhone 16 Pro &mdash; built entirely through conversation</p>
+    </div>
+</header>
+
+<div class="container">
+
+<!-- STEP 1 -->
+<div class="step" data-step="1">
+    <h2>The Initial Vision</h2>
+    <p class="summary">Building a procedural 3D hourglass from pure code — no 3D models, no imported assets.</p>
+
+    <div class="prompt-card">
+        <div class="label">Prompt</div>
+        <p>Could we try building a photorealistic 3D hourglass egg timer app for iPhone? I&rsquo;m
+        thinking SceneKit for the 3D graphics. Ideally the hourglass would have smooth glass
+        curves, visible sand that flows through the neck, and a digital timer overlay. Duration
+        presets from 1 to 5 minutes. Let&rsquo;s see if we can make it look stunning.</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Procedural geometry pipeline</div>
+        <p>The entire hourglass shape is generated mathematically at runtime:</p>
+        <ul>
+            <li><strong>11 control points</strong> define the classic hourglass silhouette</li>
+            <li><strong>Catmull-Rom spline</strong> interpolation produces ~80 smooth curve points</li>
+            <li><strong>Surface of revolution</strong> rotates the 2D profile around the Y axis
+            (64 angular segments) to create the 3D glass mesh</li>
+            <li>Custom <code>SCNGeometry</code> built from <code>SCNGeometrySource</code> and
+            <code>SCNGeometryElement</code> &mdash; full control over every vertex and triangle</li>
+        </ul>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Scene architecture</div>
+        <p>All hourglass geometry lives under a <code>hourglassContainer</code> node (so the
+        entire hourglass can be rotated for the flip animation), while camera and lights are
+        children of <code>scene.rootNode</code> (they stay fixed). A 5-point lighting rig with
+        deliberately low intensities keeps the scene warm without blowing out highlights.</p>
+    </div>
+
+    <div class="insight">
+        <strong>Key decision:</strong> Using <code>UIViewRepresentable</code> wrapping
+        <code>SCNView</code> instead of SwiftUI&rsquo;s built-in <code>SceneView</code>.
+        The built-in view doesn&rsquo;t expose <code>SCNSceneRendererDelegate</code>, which
+        is essential for per-frame physics updates at 120fps on ProMotion displays.
+    </div>
+</div>
+
+<!-- STEP 2 -->
+<div class="step" data-step="2">
+    <h2>Glass Material</h2>
+    <p class="summary">Finding the right transparency took several iterations &mdash; PBR was not the answer.</p>
+
+    <div class="response-card">
+        <div class="label">PBR vs Blinn</div>
+        <p>PBR (physically based rendering) was the obvious first choice for realistic glass,
+        but environment reflections add brightness independent of the transparency setting,
+        making the glass look like frosted white plastic. No combination of PBR parameters
+        produced clear, barely-there glass.</p>
+        <p>The fix: <strong>Blinn</strong> lighting with very low diffuse alpha (0.10),
+        specular alpha (0.15), shininess 30, <code>dualLayer</code> transparency, and
+        <code>writesToDepthBuffer = false</code>. This gives a subtle glass look that lets
+        the particles inside show clearly.</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Dual glass surfaces</div>
+        <ul>
+            <li><strong>Outer glass:</strong> visible, Blinn material as described above</li>
+            <li><strong>Inner glass:</strong> invisible (<code>opacity = 0</code>), offset
+            inward by <code>wallThickness</code> (0.008). Exists solely for its
+            <code>concavePolyhedron</code> static physics body &mdash; the collider that
+            keeps particles inside the hourglass</li>
+        </ul>
+    </div>
+
+    <div class="insight">
+        <strong>Gotcha:</strong> Two glass surfaces double the opacity if both are visible.
+        The inner glass must be fully invisible &mdash; it exists only for collision.
+        Also, <code>writesToDepthBuffer = false</code> is required on the outer glass
+        material, otherwise it occludes particles rendered behind it.
+    </div>
+</div>
+
+<!-- STEP 3 -->
+<div class="step" data-step="3">
+    <h2>From Fake Sand to Real Physics</h2>
+    <p class="summary">Geometric sand meshes looked artificial. CPU-based granular physics replaced them entirely.</p>
+
+    <div class="prompt-card">
+        <div class="label">Prompt</div>
+        <p>Let&rsquo;s go for it &mdash; how about a full particle simulation? Maybe start with a
+        small number of larger particles, perhaps 100, but with a dial that allows ramping up.
+        The narrowest point in the glass would need to be wide enough to allow at least one
+        particle through. Could we use the best techniques available on iPhone 16 Pro?</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">What was replaced</div>
+        <p>The initial sand used geometric meshes &mdash; a bowl shape, body fill, and pile
+        cone that animated to simulate flowing sand. It worked visually but felt artificial.
+        SceneKit&rsquo;s <code>SCNParticleSystem</code> was ruled out (no inter-particle
+        collision, no resting state). The entire geometric approach was deleted in favour of
+        a real physics engine.</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">CPU granular physics engine</div>
+        <ul>
+            <li><strong>O(N&sup2;) brute-force collision:</strong> every particle checks against
+            every other particle for sphere-sphere overlap. Fast enough for 100&ndash;250
+            particles on A17 Pro</li>
+            <li><strong>Wall collision via radial symmetry:</strong> compute <code>r =
+            sqrt(x&sup2;+z&sup2;)</code> and compare against
+            <code>innerRadiusAt(y:)</code> &mdash; the hourglass&rsquo;s rotational symmetry
+            reduces 3D glass collision to a 2D radial problem</li>
+            <li><strong>Each particle is an SCNNode:</strong> shared <code>SCNSphere</code>
+            geometry and golden PBR material, with positions synced per frame in
+            <code>renderer(updateAtTime:)</code></li>
+            <li><strong>Adaptive substeps:</strong> 4 for &le;500 particles, 3 for 501&ndash;1000,
+            2 for &gt;1000 &mdash; maintains 120fps at higher counts</li>
+        </ul>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Flip animation</div>
+        <p>The hourglass glass and frame caps are geometrically symmetric about Y=0. The flip
+        exploits this:</p>
+        <ul>
+            <li>Rotate <code>hourglassContainer</code> by &pi; around X (1.2s, easeInEaseOut)
+            &mdash; particles tumble with real physics as gravity rotates with the container</li>
+            <li>Snap <code>eulerAngles</code> back to (0,0,0) &mdash; invisible because the
+            shape is identical after 180&deg;</li>
+            <li>Transform all particles: <code>(x,y,z) &rarr; (x,-y,-z)</code>,
+            <code>(vy,vz) &rarr; (-vy,-vz)</code></li>
+            <li>Two-phase start: <code>startFlip()</code> triggers the rotation;
+            <code>completeFlip()</code> starts the timer after the animation finishes</li>
+        </ul>
+    </div>
+
+    <div class="insight">
+        <strong>Threading gotcha:</strong> <code>SCNAction</code> completion handlers run on
+        the SceneKit thread, but <code>completeFlip()</code> updates <code>@Published</code>
+        properties on a <code>@MainActor</code> class. The fix:
+        <code>Task { @MainActor in vm.completeFlip() }</code>. Also,
+        <code>presentation.eulerAngles.x</code> (not <code>.eulerAngles</code>) must be used
+        to read the current in-flight angle &mdash; the model property shows the target, not
+        the interpolated value.
+    </div>
+</div>
+
+<!-- STEP 4 -->
+<div class="step" data-step="4">
+    <h2>Dynamic Neck &amp; Flow Control</h2>
+    <p class="summary">Auto-sizing the neck, controlling flow rate with friction instead of gravity, and hex-packed spawning.</p>
+
+    <div class="prompt-card">
+        <div class="label">Prompt</div>
+        <p>Could we try making the narrowest point just big enough for one particle, so the
+        others back up? The animation finishes far too quickly. I think we&rsquo;re better off
+        having natural gravity but really slowing the particles down through the constriction
+        &mdash; maybe friction on the inner surface? Then they&rsquo;d speed up again via
+        gravity once they come out. Would you mind adding a duration slider from 10 seconds to
+        5 minutes too?</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Dynamic neck geometry</div>
+        <ul>
+            <li><strong>Neck auto-sizes:</strong> inner opening = <code>particleRadius +
+            wallThickness + 0.002</code> &mdash; barely fits one ball through</li>
+            <li><strong>Steep funnel shoulders:</strong> control points at &plusmn;0.04 height
+            with radius <code>neckRadius &times; 1.8</code> create a sharp constriction that
+            forces single-file flow and natural particle backup/jamming</li>
+            <li><code>SandGeometry.setNeckRadius()</code> rebuilds both glass profiles when
+            particle count changes. The <code>activeInnerProfile</code> ensures
+            <code>innerRadiusAt(y:)</code> and the GPU profile lookup table both use the
+            updated shape</li>
+        </ul>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Neck friction replaces gravity scaling</div>
+        <p>An earlier attempt scaled gravity inversely with duration (<code>effectiveGravity =
+        2.0 / duration</code>), but this made the whole scene feel like slow motion. The
+        solution: <strong>constant gravity (1.0) with a friction zone at the neck.</strong></p>
+        <ul>
+            <li><code>neckDamping = duration &times; 0.02</code> &mdash; stronger at longer
+            durations</li>
+            <li>Applied where <code>|y| &lt; 0.10</code> (neck half-height), ramping linearly
+            toward the centre</li>
+            <li>Velocity *= <code>max(0, 1 - neckFactor &times; neckDamping &times;
+            subDt)</code></li>
+            <li>Particles fall naturally in the chambers and slow down through the constriction
+            &mdash; exactly how a real hourglass behaves</li>
+        </ul>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Hex close-packed spawning</div>
+        <p>Random spawn placement with rejection sampling was replaced by a hexagonal
+        close-packed lattice filling the lower chamber from bottom up. The shared
+        <code>GranularSimulation.packedPositions()</code> algorithm is used by all three
+        physics modes. This produces a near-resting-state configuration &mdash; no settling
+        loops needed, and no UI freezes from O(N&sup2;) overlap checking at init.</p>
+    </div>
+
+    <div class="insight">
+        <strong>Two distinct regimes:</strong> constant gravity gives satisfying, weighty
+        free-fall in the chambers. Neck friction gives tuneable constriction at the bottleneck.
+        Scaling gravity produced a single, uniformly sluggish regime. Friction preserves both
+        the drama of falling and the patience of trickling.
+    </div>
+</div>
+
+<!-- STEP 5 -->
+<div class="step" data-step="5">
+    <h2>GPU Physics via Metal Compute</h2>
+    <p class="summary">Moving the O(N&sup2;) collision engine to the GPU for 10&ndash;20&times; more particles.</p>
+
+    <div class="prompt-card">
+        <div class="label">Prompt</div>
+        <p>Could we try adding a GPU-accelerated mode that I can switch to in the UI? It would
+        be great to move the physics to Metal compute shaders.</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Metal compute architecture</div>
+        <p>One GPU thread per particle. Each thread applies gravity, updates position, resolves
+        wall/floor/ceiling collisions, loops over all other particles for sphere-sphere
+        collision, and applies damping. The full O(N&sup2;) algorithm, parallelised across
+        thousands of threads.</p>
+        <ul>
+            <li><strong>Double-buffered particles:</strong> read from buffer A, write to buffer
+            B, swap per substep. Avoids race conditions when parallel threads read/write
+            overlapping particle pairs</li>
+            <li><strong>Symmetric collision:</strong> each thread applies 1/4 position correction
+            and 1/4 impulse (partner thread independently does the same, totalling 1/2)</li>
+            <li><strong>256-entry profile lookup table:</strong>
+            <code>innerRadiusAt(y:)</code> sampled at 256 Y values, uploaded as an MTLBuffer.
+            GPU does O(1) interpolated lookup instead of O(80) linear search</li>
+            <li><strong><code>storageModeShared</code> MTLBuffers:</strong> zero-copy CPU/GPU
+            access on iOS unified memory. CPU writes initial positions, GPU runs physics, CPU
+            reads back positions to update SCNNodes</li>
+            <li><strong><code>GPUParticle</code> struct:</strong> <code>float4
+            positionAndRadius</code> + <code>float4 velocityAndPad</code> = 32 bytes, naturally
+            aligned for GPU</li>
+        </ul>
+    </div>
+
+    <div class="response-card">
+        <div class="label">UI and persistence</div>
+        <ul>
+            <li>CPU/GPU segmented picker (top-right, enabled when idle)</li>
+            <li>Slider range per mode: 50&ndash;250 (CPU), 50&ndash;10,000 (GPU)</li>
+            <li>Each mode stores its particle count in a separate UserDefaults key
+            (<code>particleCount_CPU</code>, <code>particleCount_GPU</code>) &mdash; switching
+            modes recalls the last-used count</li>
+            <li>Falls back to CPU mode if <code>MetalPhysicsEngine</code> init fails (e.g.
+            simulator without Metal)</li>
+        </ul>
+    </div>
+
+    <div class="insight">
+        <strong>Same mistake, twice:</strong> the initial GPU implementation included 200
+        settling steps at init via <code>waitUntilCompleted</code> per step &mdash; exactly
+        the same UI freeze that was fixed for CPU mode. The recurring lesson: never do
+        expensive work synchronously at init. Let particles settle in real-time via the
+        render loop.
+    </div>
+</div>
+
+<!-- STEP 6 -->
+<div class="step" data-step="6">
+    <h2>Metal Instanced Mode &mdash; Three Approaches</h2>
+    <p class="summary">Eliminating the CPU readback bottleneck through three iterations of trial and error.</p>
+
+    <div class="prompt-card">
+        <div class="label">Prompt</div>
+        <p>Please could you try adding Metal instanced rendering as a third option? The CPU
+        readback to update 10,000 SCNNodes seems to be the bottleneck now.</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Attempt 1: SCNNodeRendererDelegate (failed)</div>
+        <p>Custom Metal draw calls via <code>SCNNodeRendererDelegate</code> with
+        <code>drawIndexedPrimitives(instanceCount:)</code>. After extensive implementation
+        &mdash; custom vertex/fragment shaders, lazy render pipeline, UV sphere mesh, Blinn
+        lighting matching SceneKit&rsquo;s rig &mdash; the particles were completely invisible.
+        Custom draw calls produce no visible pixels in SceneKit&rsquo;s modern multi-pass
+        rendering pipeline. Two files were written and then deleted.</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Attempt 2: Point primitives (partially worked)</div>
+        <p>Wrapped the physics MTLBuffer with <code>SCNGeometrySource(buffer:)</code> using
+        <code>.point</code> primitive type. Particles appeared, but point primitives lack
+        surface normals &mdash; PBR lighting produced black pixels. Switching to
+        <code>.constant</code> lighting (self-lit) made them visible as bright dots, but
+        above 10,000 they collapsed into a flat slab because points render as single pixels
+        with no depth or volume.</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Attempt 3: Mesh expansion compute kernel (succeeded)</div>
+        <ul>
+            <li>A second Metal compute kernel (<code>expandMeshes</code>) expands each particle
+            into an octahedron mesh (6 vertices, 8 triangular faces) with proper normals</li>
+            <li><code>SCNGeometrySource(buffer:)</code> wraps the expanded vertex buffer;
+            pre-computed static index buffer for the octahedron topology</li>
+            <li>Full PBR material works because octahedron normals provide correct lighting</li>
+            <li>SceneKit renders the triangle geometry through its standard pipeline &mdash;
+            depth, shadow, and compositing all work</li>
+            <li><strong>Zero CPU readback:</strong> Physics Compute &rarr; Mesh Expansion
+            Compute &rarr; <code>SCNGeometrySource(buffer:)</code> &rarr; SceneKit renders.
+            The CPU never touches particle positions</li>
+            <li>Geometry created once during setup and reused &mdash; SceneKit re-reads the
+            updated MTLBuffer each frame automatically. Rebuilding geometry per frame caused
+            visible flicker</li>
+        </ul>
+    </div>
+
+    <div class="insight">
+        <strong>Lesson learned:</strong> <code>SCNNodeRendererDelegate</code> is effectively
+        broken for custom Metal draw calls in modern SceneKit. The reliable path to custom GPU
+        geometry is <code>SCNGeometrySource(buffer:)</code> with <code>.triangles</code>
+        elements &mdash; it feeds into SceneKit&rsquo;s standard pipeline and gets all
+        rendering passes for free. Up to 50,000 particles with this approach.
+    </div>
+</div>
+
+<!-- STEP 7 -->
+<div class="step" data-step="7">
+    <h2>Visual Polish</h2>
+    <p class="summary">Consistent volume fill, velocity-dependent damping, particle size control, and always-on collision.</p>
+
+    <div class="prompt-card">
+        <div class="label">Prompt</div>
+        <p>The amount of volume filled with 250 CPU particles should look similar at higher
+        counts &mdash; about 25% of the hourglass filled. Also, particles settle too slowly
+        after reset &mdash; could we get them to reach steady state faster? And would it be
+        worth adding a particle size slider, persisted per mode?</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">25% volume fill with packing correction</div>
+        <p>The base formula <code>r &prop; N^(-1/3)</code> keeps total sphere volume constant,
+        but at higher counts smaller particles leave more wall clearance, so each hex-packed
+        layer holds proportionally more particles and the pile appears shorter. A correction
+        factor <code>(effR / refEffR)^(2/3)</code> scales radius up at high counts to maintain
+        the same visual fill height as the 250-particle reference.</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Damping and settling (initial attempts)</div>
+        <p>Getting particles to settle naturally proved much harder on the GPU than the CPU.
+        The initial approach used uniform damping and a sleep system:</p>
+        <ul>
+            <li><strong>Neck friction:</strong> <code>neckDamping = duration &times; 0.02</code>,
+            applied where <code>|y| &lt; 0.10</code> &mdash; controls flow rate through the
+            constriction (all modes, retained in the final solution)</li>
+            <li><strong>Velocity-dependent damping:</strong> blend between flow damping
+            (<code>pow(0.92, subDt)</code>) at high speed and settle damping
+            (<code>pow(0.05, subDt)</code>) near rest, threshold 0.15. Applied uniformly
+            everywhere. Reduced jitter but did not eliminate it (all modes)</li>
+            <li><strong>Per-particle sleep system (GPU/Metal only):</strong>
+            <code>velocityAndPad.w</code> stores a per-particle sleep counter. When speed
+            stays below a threshold for consecutive frames, the particle &ldquo;sleeps&rdquo;
+            &mdash; reducing physics work. This helped but introduced a new problem: after a
+            flip, the sleeping pile in the upper chamber refused to drain through the neck.
+            The uniform sleep threshold and settle damping were killing gravitational acceleration
+            in the upper chamber</li>
+            <li><strong>Velocity cutoff (GPU/Metal only):</strong> snap velocity to zero
+            if speed &lt; 0.01. Combined with settle damping, this zeroed out the tiny gravity
+            increments that upper-chamber particles needed to start moving</li>
+        </ul>
+        <p>These mechanisms reduced shimmer but caused jamming after flip. The full story of
+        diagnosing and solving this is covered in <strong>Step 9</strong>.</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Particle size slider and always-on collision</div>
+        <ul>
+            <li><strong>Size multiplier:</strong> 0.5&times;&ndash;1.5&times; (step 0.05,
+            default 1.0&times;) multiplied onto <code>radiusForCount()</code>. Per-mode
+            persistence via UserDefaults. Neck auto-adjusts to the final radius</li>
+            <li><strong>Always-on O(N&sup2;) collision:</strong> an earlier
+            <code>skipCollision</code> optimisation disabled sphere-sphere collision above
+            10,000 particles. Without collision, particles passed through each other and
+            collapsed into a flat slab. Removing it entirely and lowering max counts (CPU 250,
+            GPU 10,000, Metal 50,000) keeps physics correct at all counts</li>
+            <li><strong>Golden sand material:</strong> PBR diffuse (0.76/0.60/0.28), roughness
+            0.55, metalness 0.08 &mdash; high roughness and low metalness give a natural
+            matte-sand look</li>
+        </ul>
+    </div>
+
+    <div class="insight">
+        <strong>Simplicity wins (partially):</strong> the skipCollision hack was premature
+        optimisation that introduced a visible physics bug. Lowering the max count and always
+        running collision is simpler code, correct physics, and still achieves 50,000 particles
+        at interactive frame rates on A17 Pro. However, the GPU settling story was far from over
+        &mdash; uniform damping and sleep thresholds reduced shimmer but caused particles to jam
+        after flip. The real solution required a fundamentally different approach, covered in
+        Step 9.
+    </div>
+</div>
+
+<!-- STEP 8 -->
+<div class="step" data-step="8">
+    <h2>Subdivided Icosahedron &amp; Active Controls</h2>
+    <p class="summary">Nearly-spherical Metal particles, always-enabled controls, and final UX refinements.</p>
+
+    <div class="prompt-card">
+        <div class="label">Prompt</div>
+        <p>The Metal mode particles look too angular compared to the CPU/GPU spheres &mdash;
+        could we try a better mesh? Also, I&rsquo;d love it if the mode picker, size, and
+        count controls were always enabled &mdash; maybe changes during animation could
+        trigger an instant restart for mode, deferred to next start for sliders? And please
+        could you cap duration at 1 minute.</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Subdivided icosahedron mesh</div>
+        <p>The 6-vertex octahedron was replaced with a <strong>42-vertex subdivided
+        icosahedron</strong> (80 triangular faces). Each vertex lies on the unit sphere, so
+        vertex normals = vertex positions &mdash; producing nearly-spherical shading that
+        closely matches the <code>SCNSphere</code> used in CPU/GPU modes. The
+        <code>expandMeshes</code> kernel was updated to generate 42 vertices per particle
+        (with a static 240-index buffer per particle for the 80 faces).</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Always-active controls</div>
+        <ul>
+            <li><strong>Mode picker:</strong> always enabled. Changing mode during animation
+            triggers an instant restart (teardown current particles, rebuild with new mode)</li>
+            <li><strong>Size and count sliders:</strong> always enabled. Changes are deferred
+            &mdash; they take effect at the next start or reset, avoiding disruptive mid-animation
+            rebuilds</li>
+            <li><strong>Start/Reset button:</strong> always tappable. During flip, tapping resets
+            immediately (no stuck &ldquo;Flipping...&rdquo; state)</li>
+            <li><strong>Duration:</strong> capped at 1 minute with quick presets (10s / 30s / 1m)
+            for a focused egg-timer experience</li>
+        </ul>
+    </div>
+
+    <div class="insight">
+        <strong>UX principle:</strong> disabled controls frustrate users who assume the app is
+        stuck. Making everything always tappable &mdash; with instant restart for mode and
+        deferred application for sliders &mdash; gives immediate responsiveness without
+        mid-animation visual glitches. The subdivided icosahedron closes the visual gap
+        between modes: CPU/GPU use <code>SCNSphere</code>, Metal uses a 42-vertex
+        approximation that looks identical at the particle sizes involved.
+    </div>
+</div>
+
+<!-- STEP 9 -->
+<div class="step" data-step="9">
+    <h2>The GPU Settling Problem</h2>
+    <p class="summary">Why GPU/Metal particles never settled, dozens of failed fixes, a diagnostic breakthrough, and the chamber-asymmetric solution.</p>
+
+    <div class="prompt-card">
+        <div class="label">The problem</div>
+        <p>I&rsquo;m seeing an issue where GPU/Metal particles never fully settle. After reset,
+        the pile in the lower chamber shimmers and flickers indefinitely &mdash; particles
+        oscillating at speed ~0.05, never reaching rest. Worse, after a flip, the pile in the
+        upper chamber refuses to drain through the neck &mdash; particles jammed in place and
+        nothing flows. CPU mode works perfectly. The same physics constants, the same collision
+        algorithm, but fundamentally different behaviour. Any ideas?</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Root cause: parallel collision reads stale snapshots</div>
+        <p>The GPU&rsquo;s double-buffered collision is the source of both problems:</p>
+        <ul>
+            <li><strong>Shimmer:</strong> all threads read from buffer A and write to buffer B.
+            Two overlapping particles both apply position corrections independently based on the
+            same stale snapshot. On the next substep they over-correct, then under-correct, then
+            over-correct &mdash; oscillating indefinitely. CPU mode resolves collisions
+            sequentially, so each pair sees updated positions and the normal force chain
+            (floor &rarr; bottom layer &rarr; top layer) converges naturally</li>
+            <li><strong>Jamming:</strong> velocity impulses from collision are designed to stop
+            particles moving toward each other. In a packed pile under gravity, every particle
+            has gravity pulling it down and collision impulses pushing it up. On the CPU, the
+            sequential chain propagates the floor&rsquo;s support upward correctly. On the GPU,
+            impulses calculated from stale snapshots over-compensate &mdash; they cancel out
+            gravity entirely, leaving particles frozen in mid-air with zero net force. The pile
+            never drains</li>
+        </ul>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Failed approaches (dozens of iterations)</div>
+        <ul>
+            <li><strong>Pile resting damping:</strong> tracked whether each particle had a
+            neighbor pushing up from below (lower contact support) and applied extra Y velocity
+            damping. Caused <strong>unnatural central columns</strong> &mdash; particles in the
+            centre froze while outer particles kept settling. Abandoned</li>
+            <li><strong>Position-dependent sleep thresholds alone:</strong> generous threshold
+            (speed &lt; 0.08) in the lower chamber, strict (speed &lt; 0.02) in upper. Caught
+            the shimmer but particles still jammed after flip because the velocity impulses were
+            still cancelling gravity before the sleep system could engage</li>
+            <li><strong>Reduced correction factors (0.10, 0.05):</strong> shrinking the position
+            correction and impulse factors. Insufficient &mdash; shimmer reduced but not
+            eliminated, and when combined with velocity cutoff and settle damping, the reduction
+            killed all motion including desired flow</li>
+            <li><strong>Velocity cutoff + settle damping (uniform):</strong> applying aggressive
+            settle damping (<code>pow(0.05, subDt)</code>) and velocity cutoff (snap to zero
+            below 0.01) everywhere. Settled the lower chamber but killed upper-chamber drainage
+            &mdash; particles that should have been falling through the neck were having their
+            tiny gravity-accumulated velocities zeroed out every frame</li>
+        </ul>
+        <p>Each approach fixed one symptom while breaking something else. The fundamental tension:
+        the lower chamber needs aggressive settling to fight parallel-collision shimmer, but the
+        upper chamber needs gentle physics to let gravity dominate and drain the pile. No single
+        set of parameters could serve both.</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Critical breakthrough: the <code>-test</code> launch argument</div>
+        <p>After dozens of iterations tweaking parameters by eye and squinting at screenshots,
+        the key breakthrough was <strong>adding diagnostic infrastructure</strong>. A
+        <code>-test</code> launch argument in the Xcode scheme triggers:</p>
+        <ul>
+            <li>Auto-start with 10-second duration after a 2-second settling delay</li>
+            <li>On timer completion, dump every particle&rsquo;s position, velocity, and sleep
+            counter to <code>test_results.txt</code> in the app&rsquo;s documents directory</li>
+            <li>Summary statistics: upper/lower chamber counts, percentage drained, average
+            speed, sleeping/deep-sleeping counts</li>
+        </ul>
+        <p>The first test dump immediately revealed the problem. <strong>Every single
+        upper-chamber particle had exactly zero velocity.</strong> The combination of collision
+        impulse + settle damping + velocity cutoff was killing every bit of gravitational
+        acceleration before particles could move. The pile was not &ldquo;jammed by
+        friction&rdquo; &mdash; it was frozen by the settling system that was supposed to help.
+        What looked like a physics problem was actually a damping problem, and no amount of
+        screenshot-squinting could have revealed the mechanism.</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Final solution: chamber-asymmetric physics</div>
+        <p>The insight from the test data led directly to the solution: <strong>treat the two
+        chambers as fundamentally different physics regimes.</strong> The Metal shader branches
+        on <code>pos.y</code>:</p>
+        <ul>
+            <li><strong>Lower chamber (pos.y &lt; 0) &mdash; settle mode:</strong>
+                <ul>
+                    <li>Full collision: position correction (0.25) + velocity impulse (0.25)</li>
+                    <li>Aggressive settle damping: blend between flow (<code>pow(0.92, subDt)</code>)
+                    and settle (<code>pow(0.05, subDt)</code>) based on speed</li>
+                    <li>Velocity cutoff: snap to zero below 0.01</li>
+                    <li>Sleep system: counter increments when speed &lt; 0.08; light sleep at 16,
+                    deep sleep at 30 (zero GPU work). Generous threshold catches the ~0.05
+                    parallel-collision oscillation</li>
+                    <li>Result: stable resting piles, no shimmer, no flicker</li>
+                </ul>
+            </li>
+            <li><strong>Upper chamber (pos.y &gt; 0) &mdash; flow mode:</strong>
+                <ul>
+                    <li>Position correction only (0.25) &mdash; <strong>no velocity impulse</strong>.
+                    This is the critical difference. Without impulse, gravity is the dominant force
+                    and particles drain freely through the neck</li>
+                    <li>Flow damping only: <code>pow(0.92, subDt)</code> uniformly &mdash; no
+                    settle damping blend</li>
+                    <li>No velocity cutoff &mdash; tiny gravity increments must accumulate</li>
+                    <li>No sleep &mdash; sleep counter forced to 0. Particles must stay fully awake
+                    to drain</li>
+                    <li>Result: gravity dominates, pile drains freely, natural flow</li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Validation</div>
+        <p>The <code>-test</code> infrastructure proved its value immediately. After implementing
+        chamber-asymmetric physics:</p>
+        <ul>
+            <li><strong>5,000 particles, 10s timer &rarr; 100% drained</strong>, all particles in
+            lower chamber, all settled (deep sleep), average speed 0.000000</li>
+            <li>No shimmer, no flicker, no jammed piles</li>
+            <li>Upper-chamber particles fall naturally under gravity, slow through the neck
+            friction zone, and settle aggressively once they cross y=0 into the lower chamber</li>
+            <li><code>snapAfterFlip</code> resets all sleep counters to 0, ensuring every particle
+            starts fully awake after a flip regardless of prior state</li>
+        </ul>
+    </div>
+
+    <div class="insight">
+        <strong>Lesson: data-driven debugging beats screenshot-squinting.</strong> Dozens of
+        iterations adjusting physics parameters by visual inspection failed to find the root
+        cause. One test dump &mdash; a simple text file with per-particle velocities &mdash;
+        immediately revealed that the settling system itself was the problem, not the collision
+        physics. The <code>-test</code> launch argument took 20 minutes to add and saved hours
+        of guesswork. The final solution (chamber-asymmetric physics) is conceptually simple:
+        the lower chamber needs to fight parallel-collision artefacts with aggressive damping,
+        while the upper chamber needs gravity to win, so skip the impulse entirely. CPU mode
+        doesn&rsquo;t need any of this because sequential resolution converges naturally.
+    </div>
+</div>
+
+<!-- STEP 10 -->
+<div class="step" data-step="10">
+    <h2>Data-Driven Debugging</h2>
+    <p class="summary">Adding a <code>-test</code> launch argument that dumps particle state to disk &mdash; the single most impactful debugging tool in the project.</p>
+
+    <div class="prompt-card">
+        <div class="label">Prompt</div>
+        <p>Could we try adding a <code>-test</code> launch argument that auto-starts a
+        10-second timer and dumps every particle&rsquo;s position and velocity to a text file
+        when the timer completes? It would be really helpful to see exactly what the physics
+        engine is doing, rather than just squinting at the screen.</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Implementation</div>
+        <ul>
+            <li><strong><code>-test</code> launch argument:</strong> detected via
+            <code>CommandLine.arguments.contains("-test")</code>. Triggers auto-start with a
+            10-second duration after a 2-second settling delay</li>
+            <li><strong>Particle dump:</strong> on timer completion, writes every particle&rsquo;s
+            position, velocity, and sleep counter to
+            <code>Documents/test_results.txt</code></li>
+            <li><strong>Summary statistics:</strong> upper/lower chamber counts, percentage drained,
+            average speed, sleeping/deep-sleeping particle counts</li>
+        </ul>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Immediate payoff</div>
+        <p>The first test dump revealed the root cause of the GPU settling problem instantly.
+        <strong>Every single upper-chamber particle had exactly zero velocity.</strong> The
+        combination of collision impulse + settle damping + velocity cutoff was killing all
+        gravitational acceleration before particles could move. What had looked like a physics
+        or friction problem was actually a damping problem &mdash; and no amount of visual
+        inspection could have revealed the mechanism. One text file with per-particle velocities
+        made the invisible visible.</p>
+    </div>
+
+    <div class="insight">
+        <strong>Turning point:</strong> this was the diagnostic breakthrough that ended dozens of
+        failed iterations tweaking physics parameters by eye. The <code>-test</code> infrastructure
+        took 20 minutes to add and immediately pointed to the solution. It transformed GPU physics
+        debugging from guesswork into engineering.
+    </div>
+</div>
+
+<!-- STEP 11 -->
+<div class="step" data-step="11">
+    <h2>Chamber-Asymmetric Physics</h2>
+    <p class="summary">The breakthrough fix &mdash; treating upper and lower chambers as fundamentally different physics regimes.</p>
+
+    <div class="prompt-card">
+        <div class="label">Prompt</div>
+        <p>The test dump shows all upper-chamber velocities are zero &mdash; it looks like the
+        settle damping and velocity cutoff are killing gravity before particles can move. Could
+        we try different physics rules for each chamber? Maybe aggressive settling below y=0
+        but gentle flow above y=0?</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">The fundamental insight</div>
+        <p>Parallel GPU collision (double-buffered, each thread reads stale snapshots) creates
+        two distinct problems that require opposite solutions:</p>
+        <ul>
+            <li><strong>Lower chamber:</strong> particles oscillate at ~0.05 speed because
+            parallel collision corrections over/under-shoot on alternating frames. Needs aggressive
+            damping, velocity cutoff, and sleep to suppress the shimmer</li>
+            <li><strong>Upper chamber:</strong> particles must accumulate tiny gravity increments
+            frame over frame to start draining. The same aggressive damping that fixes shimmer below
+            zeroes out these increments above, freezing the pile. Needs gentle physics where gravity
+            dominates</li>
+        </ul>
+        <p>No single set of parameters could serve both regimes. The Metal shader now branches on
+        <code>pos.y</code>:</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Two-regime physics</div>
+        <ul>
+            <li><strong>Lower chamber (pos.y &lt; 0) &mdash; settle mode:</strong> full collision
+            with position correction (0.25) + velocity impulse (0.25), aggressive settle damping
+            (<code>pow(0.05, subDt)</code> blend), velocity cutoff (snap to zero below 0.01), and
+            sleep system (light sleep at 16 frames, deep sleep at 30)</li>
+            <li><strong>Upper chamber (pos.y &gt; 0) &mdash; flow mode:</strong> position correction
+            only (0.25) with <strong>no velocity impulse</strong>, flow damping only
+            (<code>pow(0.92, subDt)</code>), no velocity cutoff, no sleep. Sleep counter forced
+            to 0 so particles stay fully awake to drain</li>
+        </ul>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Why no impulse in the upper chamber works</div>
+        <p>Velocity impulse exists to stop overlapping particles from moving toward each other.
+        In a packed pile under gravity, every particle gets gravity pulling down and impulse pushing
+        up. On the GPU, impulses from stale snapshots over-compensate &mdash; they cancel gravity
+        entirely. Removing impulse in the upper chamber means gravity is the only net force.
+        Position correction alone prevents particles from overlapping, but doesn&rsquo;t fight
+        their downward motion. The pile drains freely.</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Validation</div>
+        <p>Re-running the <code>-test</code> dump after the fix: <strong>5,000 particles, 10-second
+        timer &rarr; 100% drained</strong>, all particles in lower chamber, all deep sleeping,
+        average speed 0.000000. No shimmer, no flicker, no jammed piles.
+        <code>snapAfterFlip</code> resets all sleep counters to 0, ensuring every particle starts
+        fully awake regardless of prior state.</p>
+    </div>
+
+    <div class="insight">
+        <strong>Key lesson:</strong> CPU mode never needed any of this because sequential collision
+        resolution naturally propagates floor support upward through the pile. The GPU&rsquo;s
+        parallel architecture requires explicit acknowledgement that settling (fight shimmer) and
+        flowing (let gravity win) are fundamentally different goals requiring different physics
+        rules. Chamber-asymmetric physics is the simplest correct solution.
+    </div>
+</div>
+
+<!-- STEP 12 -->
+<div class="step" data-step="12">
+    <h2>UI Polish &amp; Persistence</h2>
+    <p class="summary">Duration persistence, control layout refinements, and removing the SceneKit startup fade.</p>
+
+    <div class="prompt-card">
+        <div class="label">Prompt</div>
+        <p>Could we persist the duration in UserDefaults (default 10 seconds)? Also, would you
+        mind moving the controls up a bit to reduce overlap with the bottom edge? And if
+        possible, let&rsquo;s try getting rid of the SceneKit fade-in &mdash; ideally the
+        scene would appear instantly.</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Changes</div>
+        <ul>
+            <li><strong>Duration persistence:</strong> saved to and restored from UserDefaults
+            with a default of 10 seconds, matching the most common egg-timer use case. Joins
+            physics mode and per-mode particle count as persisted settings</li>
+            <li><strong>Control layout:</strong> bottom controls shifted upward to prevent overlap
+            with the screen edge and home indicator area, improving thumb reachability</li>
+            <li><strong>SceneKit startup fade removed:</strong> the default SceneKit
+            fade-in animation was disabled so the hourglass appears instantly when the app
+            launches, rather than fading in from black over ~0.3 seconds</li>
+        </ul>
+    </div>
+
+    <div class="insight">
+        <strong>Small details matter:</strong> the startup fade was barely noticeable but made the
+        app feel sluggish. Duration persistence means users don&rsquo;t have to re-adjust the
+        slider every launch &mdash; the app remembers their preferred timer length alongside
+        their preferred physics mode and particle count.
+    </div>
+</div>
+
+<!-- STEP 13 -->
+<div class="step" data-step="13">
+    <h2>Random Per-Particle Colors</h2>
+    <p class="summary">A toggle that gives each particle a unique random HSB color &mdash; implemented differently for each rendering mode.</p>
+
+    <div class="prompt-card">
+        <div class="label">Prompt</div>
+        <p>How about adding a toggle for random per-particle colors? Each ball could get a
+        random color from the full HSB spectrum. Would it be possible to make it work across
+        all three physics modes?</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">CPU and GPU modes: per-node materials</div>
+        <p>In CPU and GPU modes, each particle is an <code>SCNNode</code> with a shared
+        <code>SCNSphere</code> geometry. To give each particle a unique color, the shared geometry
+        is replaced with <strong>per-node copies of <code>SCNSphere</code></strong>, each assigned
+        a unique PBR material with a random HSB diffuse color. This uses more memory than the
+        shared-geometry approach but is straightforward &mdash; SceneKit handles per-material
+        rendering natively.</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Metal mode: per-vertex colors via expanded mesh</div>
+        <p>Metal mode has no <code>SCNNode</code> per particle &mdash; all particles are a single
+        mesh generated by the <code>expandMeshes</code> compute kernel. Adding per-particle
+        colors required changes at every level:</p>
+        <ul>
+            <li><strong><code>MeshVertex</code> struct expanded to 28 bytes:</strong> the previous
+            layout stored position (12 bytes) + normal (12 bytes) = 24 bytes. A
+            <code>packed_float3 color</code> field was added, bringing the total to
+            <code>packed_float3 position + packed_float3 normal + packed_float3 color</code>
+            (36 bytes, or 28 with tighter packing depending on alignment)</li>
+            <li><strong>Color buffer:</strong> a separate MTLBuffer stores one random
+            <code>packed_float3</code> RGB color per particle. The <code>expandMeshes</code>
+            kernel reads from this buffer and copies the particle&rsquo;s color to every vertex
+            of its mesh</li>
+            <li><strong><code>SCNGeometrySource</code> with <code>.color</code> semantic:</strong>
+            a third geometry source wraps the color data from the expanded mesh buffer, telling
+            SceneKit to use per-vertex colors for rendering</li>
+        </ul>
+    </div>
+
+    <div class="insight">
+        <strong>Three modes, three approaches:</strong> CPU/GPU use SceneKit&rsquo;s material
+        system (per-node <code>SCNSphere</code> copies with unique materials). Metal bypasses
+        SceneKit&rsquo;s material system entirely by baking color into the vertex data via a
+        compute kernel and a <code>.color</code> geometry source. The toggle applies instantly
+        on the next particle setup &mdash; no restart required.
+    </div>
+</div>
+
+<!-- STEP 14 -->
+<div class="step" data-step="14">
+    <h2>Test Target</h2>
+    <p class="summary">Adding ShiftingSandsTests with CPU and GPU physics test suites &mdash; 12 tests covering the core simulation.</p>
+
+    <div class="prompt-card">
+        <div class="label">Prompt</div>
+        <p>Let&rsquo;s get data access and tests in early! Could we add a test target with tests
+        for both the CPU and GPU physics engines? It would be great to cover the fundamentals:
+        gravity, floor containment, sphere collision, flip transform, full drain, settling,
+        and wall containment.</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">CPUPhysicsTests (7 tests)</div>
+        <ul>
+            <li><strong>Gravity:</strong> a free particle falls downward over time</li>
+            <li><strong>Floor containment:</strong> a particle at the bottom stays above the floor</li>
+            <li><strong>Sphere collision:</strong> two overlapping particles are pushed apart</li>
+            <li><strong>Flip transform:</strong> <code>(x,y,z) &rarr; (x,-y,-z)</code> and velocity
+            inversion are correct</li>
+            <li><strong>Full drain:</strong> after enough simulation steps, all particles end up
+            in the lower chamber</li>
+            <li><strong>Settling:</strong> particles reach near-zero velocity after sufficient
+            time</li>
+            <li><strong>Wall containment:</strong> particles stay inside the glass profile</li>
+        </ul>
+    </div>
+
+    <div class="response-card">
+        <div class="label">GPUPhysicsTests (5 tests)</div>
+        <ul>
+            <li><strong>Gravity:</strong> GPU particle falls under gravity matching CPU behaviour</li>
+            <li><strong>Floor containment:</strong> GPU particles stay above the chamber floor</li>
+            <li><strong>Sphere collision:</strong> overlapping GPU particles separate</li>
+            <li><strong>Flip transform:</strong> <code>snapAfterFlip</code> Metal kernel correctness</li>
+            <li><strong>Wall containment:</strong> particles remain within the glass profile after
+            simulation</li>
+        </ul>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Test infrastructure</div>
+        <ul>
+            <li>Uses the <strong>Swift Testing framework</strong> (<code>import Testing</code>,
+            <code>@Test</code>, <code>#expect()</code>)</li>
+            <li>GPU tests require a real Metal device &mdash; they check for
+            <code>MTLCreateSystemDefaultDevice()</code> and skip gracefully on simulators
+            without Metal support</li>
+            <li>Tests exercise the same <code>GranularSimulation</code> and
+            <code>MetalPhysicsEngine</code> code paths used by the app &mdash; no mocks or
+            simplified physics</li>
+            <li>All 12 tests pass on device</li>
+        </ul>
+    </div>
+
+    <div class="insight">
+        <strong>User wisdom: &ldquo;provide data access and tests early!&rdquo;</strong> The test
+        target validates the physics engines in isolation, catching regressions that would be
+        invisible during visual testing. Combined with the <code>-test</code> launch argument
+        from Step 10, the project now has two layers of verification: automated unit tests for
+        correctness, and the diagnostic dump for real-device behaviour analysis. Both were added
+        late in the project &mdash; the lesson is to add them from the start.
+    </div>
+</div>
+
+<!-- STEP 15 -->
+<div class="step" data-step="15">
+    <h2>Lighting &amp; UI Polish</h2>
+    <p class="summary">Refined particle lighting, moved controls for better layout, and fixed button behavior after timer completion.</p>
+
+    <div class="prompt-card">
+        <div class="label">Prompt</div>
+        <p>The underside of particles is blown out white in GPU and Metal mode &mdash; could we
+        try a different lighting approach? Also, would you mind moving the colour selector to
+        top-left? The hourglass should ideally show immediately. The Start/Reset button after
+        timer completes needs a look too. And could we improve GPU color mode performance?</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Lambert lighting model</div>
+        <ul>
+            <li>Switched all particle materials from <code>.physicallyBased</code> to
+            <code>.lambert</code> &mdash; eliminates specular highlights and Fresnel reflections
+            that caused white blowout on particle undersides</li>
+            <li>Key light intensity reduced from 200 to 120, bottom fill from 25 to 8</li>
+            <li>Metal mode mesh material uses <code>UIColor(white: 0.78)</code> diffuse (slightly
+            below white) to match perceived brightness of CPU/GPU SCNSphere nodes</li>
+        </ul>
+    </div>
+
+    <div class="response-card">
+        <div class="label">GPU color performance</div>
+        <ul>
+            <li>Random color mode was creating per-node <code>SCNSphere</code> copies (N draw
+            calls!) &mdash; replaced with a 24-color palette of shared geometries</li>
+            <li>Nodes randomly assigned to palette entries, allowing SceneKit to batch ~N/24
+            nodes per draw call</li>
+            <li>Dramatic performance improvement in GPU mode with colors enabled</li>
+        </ul>
+    </div>
+
+    <div class="response-card">
+        <div class="label">UI and button fixes</div>
+        <ul>
+            <li>Color toggle moved from top-right to top-left corner</li>
+            <li>All top controls pushed up to <code>.padding(.top, 8)</code> (was 60) to minimize
+            hourglass overlap</li>
+            <li>Added <code>scnView.prepare(scene, shouldAbortBlock:)</code> for synchronous
+            shader compilation &mdash; eliminates fade-in</li>
+            <li>Button now shows &ldquo;Start&rdquo; after timer completes (was &ldquo;Reset&rdquo;)
+            &mdash; pressing it resets and starts a new flip</li>
+            <li>Added <code>-multicolor</code> launch argument</li>
+        </ul>
+    </div>
+
+    <div class="insight">
+        <strong>Key insight:</strong> PBR lighting models have unavoidable Fresnel reflections at
+        grazing angles &mdash; the physics is correct (all surfaces reflect 100% at extreme angles)
+        but visually wrong for matte sand particles. Lambert&rsquo;s pure diffuse shading is
+        physically simpler but visually more appropriate. Sometimes the less sophisticated model
+        produces the better result.
+    </div>
+</div>
+
+<!-- STEP 16 -->
+<div class="step" data-step="16">
+    <h2>Physics Debugging &amp; Spawn Fixes</h2>
+    <p class="summary">Data-driven debugging round 2 &mdash; CLI diagnostic args reveal mid-air freezing, missing respawn, and neck-region overflow placement.</p>
+
+    <div class="prompt-card">
+        <div class="label">The problems</div>
+        <p>I&rsquo;m seeing a couple of issues in GPU mode after the timer runs: (1) particles
+        seem to be getting stuck mid-air with no physical support beneath them, and (2) reset
+        sometimes fills the entire chamber with particles jammed in the middle. Both are
+        intermittent and hard to reproduce visually &mdash; could we investigate?</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Diagnostic approach: CLI launch arguments</div>
+        <p>Extended the existing <code>-test</code> infrastructure with new CLI diagnostic arguments
+        to reproduce and diagnose without guesswork:</p>
+        <ul>
+            <li><code>-mode [CPU|GPU|Metal]</code> &mdash; force a specific physics mode</li>
+            <li><code>-count N</code> &mdash; force a specific particle count</li>
+            <li><code>-size N</code> &mdash; force a specific size multiplier</li>
+            <li><code>-dumpspawn</code> &mdash; dump spawn position histogram on startup, showing
+            particle distribution by Y-height region (upper chamber, neck, lower chamber)</li>
+        </ul>
+        <p>Running in the simulator with <code>-mode GPU -count 10000 -size 1.3 -dumpspawn</code>
+        immediately produced actionable data.</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Root cause 1: velocity cutoff freezes unsupported particles</div>
+        <p>The GPU sleep system (from Step 9) used a velocity cutoff: particles below a speed
+        threshold had their velocity snapped to zero and their sleep counter incremented. The
+        problem was that the cutoff only checked <strong>velocity</strong>, not whether the particle
+        had any physical support beneath it. A particle could be in mid-air, momentarily slow
+        (e.g. after a collision impulse cancelled its downward velocity), get frozen by the cutoff,
+        and stay stuck with zero velocity forever &mdash; gravity increments zeroed out every frame
+        by the same cutoff.</p>
+        <p>The fix: added a <strong><code>contactCount</code></strong> tracker in the collision loop.
+        Only particles that are actively touching at least one other particle (or the floor) can
+        enter the sleep/freeze state. Unsupported mid-air particles always stay fully awake,
+        allowing gravity to pull them down.</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Root cause 2: missing respawn after timer completion</div>
+        <p>After the timer ran to natural completion, particles were <strong>not respawned</strong>.
+        The next tap of &ldquo;Start&rdquo; would flip whatever was left from the previous run
+        &mdash; often a disorganised mess with particles scattered throughout both chambers. If
+        particles had drifted or settled unevenly, the flip would start from a bad initial state.</p>
+        <p>The fix: respawn particles on <strong>manual Reset</strong> only. Natural timer completion
+        leaves particles at rest where they settled &mdash; no visual jump. Flip start only rebuilds
+        if count/size/color settings changed. This gives clean transitions between runs without
+        jarring respawn flashes.</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Root cause 3: overflow particles placed near the neck</div>
+        <p>The hex-packed spawning algorithm (<code>packedPositions()</code>) has a capacity limit
+        per layer. When more particles are requested than fit in the lower chamber&rsquo;s hex grid,
+        overflow particles need to go somewhere. The original code placed them near <code>y = 0</code>
+        &mdash; the neck region. These particles would immediately jam in the constriction on the
+        next flip, blocking flow.</p>
+        <p>The <code>-dumpspawn</code> histogram made this obvious: with 10,000 particles at size
+        1.3&times;, the dump showed a cluster of particles near <code>y = 0</code>. After the fix
+        &mdash; placing overflow particles in the lower chamber bulge (the widest part, well below
+        the neck) &mdash; the dump showed <strong>0 upper-chamber particles, 0 near-neck
+        particles</strong>.</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Other changes in this session</div>
+        <ul>
+            <li><strong>Duration range:</strong> changed from 10&ndash;60s to 5&ndash;30s, default 5s
+            &mdash; tighter range for a focused egg-timer experience</li>
+            <li><strong>Gravity scaling:</strong> gravity now scales inversely with duration (full
+            strength at 5s, approximately 0.17 at 30s) to keep flow rate proportional across the
+            range</li>
+            <li><strong>Spawn packing unit tests:</strong> 14 tests total (was 12), adding coverage
+            for the overflow placement fix and spawn distribution</li>
+        </ul>
+    </div>
+
+    <div class="insight">
+        <strong>Data-driven debugging, again.</strong> This was the second time diagnostic data
+        immediately revealed what visual inspection could not. The spawn dump histogram showed
+        particles near <code>y = 0</code> (the neck) within seconds of running the command &mdash;
+        confirming the overflow placement bug. The <code>contactCount</code> fix for mid-air
+        freezing was equally invisible to the eye: a particle hovering motionless looks identical
+        to a properly resting particle unless you know its support state. The CLI diagnostic
+        arguments (<code>-mode</code>, <code>-count</code>, <code>-size</code>,
+        <code>-dumpspawn</code>) are lightweight to add and transform reproduction from
+        &ldquo;sometimes happens if you try enough times&rdquo; into &ldquo;deterministic on
+        first run.&rdquo;
+    </div>
+</div>
+
+<!-- STEP 17 -->
+<div class="step" data-step="17">
+    <h2>Sleep System Deep Dive</h2>
+    <p class="summary">Three interconnected sleep bugs discovered and fixed in sequence &mdash; mid-air suspension, FPS collapse, and glass blur.</p>
+
+    <div class="prompt-card">
+        <div class="label">The problem</div>
+        <p>I&rsquo;m noticing a few things in GPU mode with 10,000 particles at size 1.3: some
+        particles seem to be left hanging just above the settled pile. Also, FPS is dropping
+        from 60 to ~14 near the end of the animation, and particles appear blurry through the
+        front of the glass during settling. Could we take a look?</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Bug 1: sleeping particles whose support moved away</div>
+        <p>When a particle entered deep sleep (counter &gt;30), it stayed frozen forever &mdash;
+        even if the particles supporting it had since moved away. A particle sitting on top of
+        another could remain suspended in mid-air after the lower particle drained through the neck.
+        The deep sleep early-return wrote the same position every frame without checking whether
+        support still existed.</p>
+        <p>The fix: <strong>support verification in deep sleep</strong>. Before staying asleep,
+        check if the particle still has support: floor contact counts as support (cheap Y check),
+        otherwise scan nearby particles within 1.05&times; touching distance. If no support found,
+        reset the sleep counter to 0 and let the particle fall. Added a unit test:
+        <code>sleepingParticleWakesWhenSupportRemoved</code>.</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Bug 2: FPS collapse from O(N) support scans</div>
+        <p>The support verification scan ran for <strong>every deep-sleeping particle every
+        frame</strong>. At 10,000 particles with most in deep sleep, this added ~80 million
+        distance checks per frame. The GPU couldn&rsquo;t sustain 60fps.</p>
+        <p>The fix: <strong>staggered support checks</strong>. Each particle only verifies support
+        every 30 frames, offset by its thread ID (<code>sleepCounter % 30 == tid % 30</code>).
+        Only ~N/30 particles check per frame, reducing overhead by 30&times;. A particle whose
+        support disappears wakes within ~0.5 seconds (30 frames at 60fps) &mdash; fast enough to
+        be visually imperceptible.</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Bug 3: glass blur from light sleep oscillation</div>
+        <p>Light sleep (counter 16&ndash;30) tracked <code>sleepContactCount</code> and woke
+        particles when they lost contacts. The problem: particles barely separated from neighbors
+        (distance slightly exceeding the touching threshold) had zero contacts, woke every ~15
+        frames, made a micro-movement, and re-entered sleep. This oscillation at ~4Hz created
+        visible blur through the transparent glass. SceneKit&rsquo;s temporal jittering (AA)
+        amplified the effect by blending successive frames.</p>
+        <p>The fix: <strong>removed <code>sleepContactCount</code> from light sleep entirely</strong>.
+        Light sleep now wakes only if a non-sleeping neighbor is approaching fast
+        (<code>relVelNormal &lt; -0.05</code>). Support-loss detection is deferred to the deep
+        sleep staggered check, which runs less frequently and doesn&rsquo;t cause oscillation.
+        Also disabled <code>isJitteringEnabled</code> &mdash; MSAA 4X provides sufficient AA
+        without temporal artifacts.</p>
+    </div>
+
+    <div class="insight">
+        <strong>Cascading fixes:</strong> the three bugs were deeply interconnected. Fixing mid-air
+        suspension (support verification) introduced the FPS collapse (too many scans). Fixing the
+        FPS collapse (staggering) was cheap enough but the blur remained until the light sleep
+        oscillation was identified as a separate issue. Each fix was necessary but not sufficient
+        &mdash; all three together produced stable, efficient, blur-free settling.
+    </div>
+</div>
+
+<!-- STEP 18 -->
+<div class="step" data-step="18">
+    <h2>Visual Tuning &amp; Spawn Control</h2>
+    <p class="summary">Camera depth of field, spawn height limits, and a flatness test for the initial particle pile.</p>
+
+    <div class="prompt-card">
+        <div class="label">Prompt</div>
+        <p>Particles are bouncing around at the bottom and it looks like motion blur &mdash;
+        could we try f/11 for deeper focus? Also, the start and reset operation still starts
+        with some particles very near the neck of the hourglass &mdash; ideally at max they&rsquo;d
+        be no more than half way up the bottom half. And if possible, the top layer should be
+        flat rather than blocky.</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Camera tuning</div>
+        <ul>
+            <li><strong>f-stop 5.6 &rarr; 11.0:</strong> deeper depth of field keeps more particles
+            in sharp focus, reducing perceived blur at the edges of the pile</li>
+            <li><strong><code>motionBlurIntensity = 0</code>:</strong> explicitly disabled to prevent
+            any per-frame motion blur from compounding with the settling micro-movements</li>
+            <li><strong>Jittering disabled:</strong> <code>isJitteringEnabled = false</code> eliminates
+            SceneKit&rsquo;s temporal anti-aliasing, which was smearing micro-movements through the
+            transparent glass. MSAA 4X provides clean anti-aliasing without temporal artifacts</li>
+        </ul>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Spawn height control</div>
+        <p>The hex-packed spawning had three iterations:</p>
+        <ul>
+            <li><strong>Original (<code>maxY = -0.05</code>):</strong> particles spawned too close
+            to the neck, getting stuck on reset</li>
+            <li><strong>First fix (<code>maxY = -0.24</code>):</strong> too restrictive &mdash; at
+            high particle counts, the hex lattice couldn&rsquo;t fit all particles below -0.24.
+            Overflow particles were placed randomly, creating an uneven &ldquo;weird block&rdquo; in
+            the middle</li>
+            <li><strong>Final fix (<code>maxY = -0.10</code>):</strong> the hex lattice fills from
+            the bottom and stops early when it has enough particles. At low counts it naturally
+            stays well below -0.24. At high counts with large sizes, it extends up to -0.10 (still
+            well below the neck at y=0). Overflow random placement rarely triggers</li>
+        </ul>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Top layer flatness test</div>
+        <p>Added <code>spawnTopLayerIsFlat()</code> to the CPU test suite. The test spawns particles
+        at four configurations (5k/10k at 1.0/1.3 size), sorts by Y, and verifies the spread of
+        the top 5% of particles is within 3 particle diameters. This catches the blocky spawn
+        pattern that occurred with the too-restrictive -0.24 cap. 16 tests total (10 CPU, 6 GPU).</p>
+    </div>
+
+    <div class="insight">
+        <strong>Iterative refinement:</strong> the spawn height went through three values before
+        settling on the right balance. The key insight was that the hex lattice naturally stops
+        early at low counts &mdash; a generous upper limit (-0.10) doesn&rsquo;t cause problems
+        because the lattice fills bottom-up and exits as soon as it has enough particles. Only at
+        very high counts with large sizes does it extend above -0.24, and -0.10 keeps it well
+        clear of the neck. The flatness test ensures future changes don&rsquo;t regress the spawn
+        quality.
+    </div>
+</div>
+
+</div><!-- container -->
+
+<footer>
+    ShiftingSands &mdash; Built entirely through conversation with
+    <a href="https://claude.ai/code" style="color: var(--accent); text-decoration: none;">Claude Code</a>
+    &mdash; No 3D models, no imported assets
+</footer>
+
+</body>
+</html>
