@@ -1,3 +1,203 @@
+# Apple Dev - Claude Code Project Conventions
+
+This folder contains native iOS apps built entirely through conversation with Claude Code. This file captures the shared principles, patterns, and preferences that apply across all projects.
+
+## Tech Stack
+
+Every project uses the same foundation:
+
+- **Language:** Swift 5
+- **UI Framework:** SwiftUI (no storyboards, no XIBs)
+- **Minimum Target:** iOS 17.0+ (some projects use iOS 18.0+)
+- **Xcode:** 16+
+- **Device:** iPhone only (`TARGETED_DEVICE_FAMILY = 1`)
+- **Orientation:** Portrait only
+- **Dependencies:** Zero external dependencies — pure Apple frameworks only (SwiftUI, MapKit, CoreLocation, Photos, CryptoKit, Swift Charts, etc.)
+
+## Architecture
+
+All projects follow **MVVM** with SwiftUI's reactive data binding:
+
+- **View models** are `ObservableObject` classes with `@Published` properties, observed via `@StateObject` in views
+- **Views** are declarative SwiftUI — no UIKit unless wrapping a system controller (e.g. `SFSafariViewController`)
+- **Services/API clients** use the `actor` pattern for thread safety
+- **Networking** uses native `URLSession` with `async/await` — no external HTTP libraries
+- **View models** are annotated `@MainActor` when they drive UI state
+
+## Project Structure
+
+Each project follows this standard layout:
+
+```
+ProjectName/
+├── ProjectName.xcodeproj/
+├── CLAUDE.md                    # Developer reference (this kind of file)
+├── README.md                    # User-facing documentation
+├── architecture.html            # Interactive Mermaid.js architecture diagrams
+├── tutorial.html                # Build narrative with prompts and responses
+└── ProjectName/
+    ├── App/
+    │   ├── ProjectNameApp.swift # @main entry point
+    │   └── ContentView.swift    # Root view / navigation
+    ├── Models/                  # Data model structs and SwiftData @Models
+    ├── Views/                   # SwiftUI views
+    │   └── Components/          # Reusable view components
+    ├── Services/                # API clients, managers, business logic
+    ├── ViewModels/              # ObservableObject state management
+    ├── Extensions/              # Formatters and helpers
+    └── Assets.xcassets/
+        ├── AppIcon.appiconset/  # 1024x1024 icons (standard, dark, tinted)
+        └── AccentColor.colorset/
+```
+
+Smaller projects (e.g. Where) may flatten this into fewer files — the principle is simplicity over ceremony.
+
+## Xcode Project File (project.pbxproj)
+
+Projects are created and maintained by writing `project.pbxproj` directly, not via the Xcode GUI. When adding new Swift files to a target that doesn't use file system sync, register in four places:
+
+1. **PBXBuildFile section** — build file entry
+2. **PBXFileReference section** — file reference entry
+3. **PBXGroup** — add to the appropriate group's `children` list
+4. **PBXSourcesBuildPhase** — add build file to the target's Sources phase
+
+ID patterns vary per project but follow a consistent incrementing convention within each project. Test targets may use `PBXFileSystemSynchronizedRootGroup` (Xcode 16+), meaning test files are auto-discovered.
+
+## Build Verification
+
+Always verify the build after any code change:
+
+```bash
+xcodebuild -project ProjectName.xcodeproj -scheme ProjectName \
+  -destination 'generic/platform=iOS' build \
+  CODE_SIGNING_ALLOWED=NO 2>&1 | tail -5
+```
+
+A clean result ends with `** BUILD SUCCEEDED **`. Fix any errors before considering a task complete.
+
+## Testing
+
+```bash
+xcodebuild -project ProjectName.xcodeproj -scheme ProjectName \
+  -destination 'platform=iOS Simulator,name=iPhone 16' test \
+  CODE_SIGNING_ALLOWED=NO
+```
+
+- Use **in-memory containers** for SwiftData tests (fast, isolated)
+- Use the **Swift Testing framework** (`import Testing`, `@Test`, `#expect()`) for newer projects
+- **Extract pure decision logic as `internal static` methods** with explicit parameters so tests can inject values directly — avoid testing through singletons, UserDefaults, or system frameworks
+- Test files that use Foundation types must `import Foundation` alongside `import Testing`
+
+## Key Patterns
+
+### Persistence
+
+- **SwiftData** for structured app data (e.g. PillRecord)
+- **UserDefaults / @AppStorage** for preferences, settings, and cache
+- **iOS Keychain** for API credentials and secrets (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`)
+- **JSON encoding** in UserDefaults for lightweight structured data (e.g. portfolio, saved places)
+
+### Networking
+
+- **Graceful degradation:** The app should work with reduced functionality when API calls fail. Isolate independent API calls in separate `do/catch` blocks so one failure doesn't take down the others
+- **Task cancellation:** Cancel in-flight tasks before starting new ones. Check `Task.isCancelled` before publishing results
+- **Debouncing:** Use 0.8-second debounce for rapid user interactions (e.g. map panning) to prevent API spam
+- **Caching:** Cache API responses with TTLs in UserDefaults (e.g. 5-min for quotes, 30-min for historical data)
+
+### Concurrency
+
+- **Actor-based services** for thread-safe API clients
+- **`async let` for parallel fetching** of independent data
+- Wrap work in an unstructured `Task` inside `.refreshable` to prevent SwiftUI from cancelling structured concurrency children when `@Published` properties trigger re-renders
+- **`Task.detached(.utility)`** for background work like photo library scanning
+- **Swift 6 concurrency:** Use `guard let self else { return }` in detached task closures; copy mutable `var` to `let` before `await MainActor.run`
+
+### Timers
+
+- Prefer **one-shot `DispatchWorkItem`** over polling `Timer.publish`
+- Avoid always-running timers — schedule on demand, cancel on completion
+
+### SwiftUI
+
+- **`.id()` modifier** on views for animated identity changes (e.g. month transitions)
+- **GeometryReader** for proportional layouts
+- **Asymmetric slide transitions** with tracked direction state
+- **NavigationStack** with `.toolbar` and `.sheet` for settings
+- **`.refreshable`** for pull-to-refresh
+- **Segmented pickers** for mode selection (chart periods, map styles, etc.)
+- **@AppStorage** for persisting UI preferences across launches
+- **`.contentShape(Rectangle())`** for full-row tap targets
+
+## App Icons
+
+Generated programmatically using **Python/Pillow** — not designed in a graphics tool. Three variants at 1024x1024:
+
+- **Standard** (light mode)
+- **Dark** (dark mode)
+- **Tinted** (greyscale for tinted mode)
+
+Referenced in `Contents.json` with `luminosity` appearance variants. Use `Image.new("RGB", ...)` not `"RGBA"` — iOS strips alpha for app icons, causing compositing artefacts with semi-transparent overlays.
+
+## Documentation
+
+Each project includes four living documents that must be kept up to date as the project evolves:
+
+### CLAUDE.md (developer reference)
+
+The comprehensive knowledge base for Claude Code sessions. Must be updated whenever:
+- A new file, model, view, or service is added or removed
+- An architectural decision is made or changed
+- A new API is integrated or an existing one changes
+- A non-obvious bug is fixed or a gotcha is discovered
+- Build configuration, test coverage, or project structure changes
+
+This is the single source of truth for project context. A future session should be able to read CLAUDE.md and understand the entire project without exploring the codebase.
+
+### README.md (user-facing)
+
+The public-facing project overview. Must be updated whenever:
+- Features are added, changed, or removed
+- Setup instructions change (new dependencies, API keys, permissions)
+- The project structure changes significantly
+- Screenshots become outdated (note when a new screenshot is needed)
+
+Keep it concise and practical — someone should be able to clone the repo and get running by following the README.
+
+### architecture.html (architecture diagrams)
+
+Interactive Mermaid.js diagrams rendered in a standalone HTML file. Must be updated whenever:
+- The view hierarchy changes (new views, removed views, restructured navigation)
+- Data flow changes (new services, new API integrations, changed data pipelines)
+- New major subsystems are added (e.g. a notification system, a caching layer, a P&L calculator)
+
+Use `graph TD` (top-down) for readability on narrow screens. Load Mermaid.js from CDN. Apply the shared dark theme with CSS custom properties and project-appropriate accent colours.
+
+### tutorial.html (build narrative)
+
+A step-by-step record of how the app was built through Claude Code conversation. Must be updated whenever:
+- A significant new feature is added via a notable prompt interaction
+- A major refactor or architectural change is made
+- An interesting problem is solved through iterative prompting
+
+Capture the essence of the prompt, the approach taken, and the outcome. This documents the collaborative development process and serves as a guide for building similar features in future projects.
+
+**Prompt tone:** Prompts recorded in the tutorial should sound collaborative, not demanding. Use phrases like "Could we try...", "How about...", "Would you mind...", "Would it be worth...", "I'd love it if..." rather than "Make...", "Add...", "I want...", "I need...". When describing problems, use "I'm seeing..." or "I'm noticing..." rather than assertive declarations. The tone should reflect a partnership — two people working together on something, not instructions being issued.
+
+### Formatting conventions
+
+- Use plain Markdown in `.md` files (no inline HTML except README badges). Images must use `![alt](src)` syntax, not `<img>` tags
+- HTML docs use a shared dark theme with CSS custom properties and Mermaid.js loaded from CDN
+- HTML docs include a hero screenshot in a phone-frame wrapper (black background, rounded corners, drop shadow) below the title/badges
+
+## Common Gotchas
+
+- **Keychain: always delete before add** to avoid `errSecDuplicateItem`
+- **SwiftUI `.refreshable` cancels structured concurrency** — wrap network calls in an unstructured `Task`
+- **Wikimedia geosearch caps at 10,000m radius** — clamp before sending
+- **Wikipedia disambiguation pages** — filter out articles where extract contains "may refer to"
+
+---
+
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
@@ -91,6 +291,7 @@ head -30 "$CONTAINER/Documents/spawn_state.txt"
 | `GranularSimulation.swift` | CPU-based granular physics: O(N²) sphere-sphere collision, glass wall collision, gravity rotation. Also provides shared `packedPositions()` hex-packed spawning used by all modes |
 | `MetalPhysicsEngine.swift` | GPU-accelerated physics via Metal compute shaders: double-buffered particles, profile lookup table, mesh expansion compute kernel, safe array readback. Color buffer (`MTLBuffer` of `uchar4`, one per particle) for random color mode |
 | `ParticlePhysics.metal` | Metal compute kernels: `physicsStep` (full O(N²) physics per particle), `snapAfterFlip`, and `expandMeshes` (subdivided icosahedron mesh expansion for Metal instanced mode — 42 verts, 80 faces per particle, 28-byte `MeshVertex` with per-vertex color) |
+| `generate_icons.py` | Python/Pillow script generating three 1024×1024 app icons (standard, dark, tinted). Uses the exact Catmull-Rom hourglass profile from `SandGeometry.swift` with hex-packed golden sand balls at the bottom of the lower chamber, glass edge highlights, wooden caps, and deep charcoal background |
 | `ShiftingSandsTests/` | Test target directory (PBXFileSystemSynchronizedRootGroup, auto-discovered) |
 | `CPUPhysicsTests.swift` | Swift Testing: gravity, floor bounce, sphere collision, flip transform, full drain (50 particles), settling, spawn packing (lower chamber containment at 10k/1.3× and various sizes), spawn top layer flatness, wall containment |
 | `GPUPhysicsTests.swift` | Swift Testing: gravity, floor containment, flip transform, full drain (100 particles), settling + sleep verification, sleeping particle wakes when support removed |
@@ -314,6 +515,20 @@ Fixed perspective: FOV 40°, positioned at (0, 0.05, 3.0), looking at (0, -0.02,
 | `createPileWithSpread()` | Unified pile mesh — min(cone slope, glass profile) per ring (legacy, unused) |
 | `createSandBody()` | Solid fill conforming to inner glass profile (legacy, unused) |
 | `createConcaveBowl()` | Parabolic bowl surface (legacy, unused) |
+
+## App Icons
+
+Generated programmatically with **Python/Pillow** (`generate_icons.py`), not designed in a graphics tool. Three variants at 1024×1024 RGB:
+
+- **Standard** (`hourglass_icon.png`) — warm dark purple-grey (#26243A) background
+- **Dark** (`hourglass_icon_dark.png`) — deep charcoal (#1A1A2E) background
+- **Tinted** (`hourglass_icon_tinted.png`) — greyscale on near-black (#1C1C1C)
+
+All three share the same design: the exact hourglass Catmull-Rom profile from `SandGeometry.swift`, rendered as a 2D silhouette with glass edge outlines, a specular highlight on the right side, warm wooden caps at top and bottom, and hex-packed golden sand balls settled in a shallow layer at the bottom of the lower chamber — matching the app's resting state. 3× supersampling with LANCZOS downscale for clean anti-aliasing.
+
+Referenced in `Assets.xcassets/AppIcon.appiconset/Contents.json` with `luminosity` appearance variants (standard, dark, tinted).
+
+To regenerate: `python3 generate_icons.py`
 
 ## Gotchas
 

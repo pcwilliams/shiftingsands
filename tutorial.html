@@ -1391,6 +1391,63 @@
     </div>
 </div>
 
+<h2>App Icon</h2>
+    <p class="summary">Programmatic icon generation using the exact hourglass profile from the simulation code.</p>
+
+    <div class="prompt-card">
+        <div class="label">Prompt</div>
+        <p>One thing we don&rsquo;t have is a nice dark-mode app icon. I think one modelled on
+        the main logo in sscrop.png would be nice &mdash; or a stylistic version of that at least.</p>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Icon generation approach</div>
+        <ul>
+            <li><strong>Python/Pillow script (<code>generate_icons.py</code>):</strong> generates all three
+            icon variants (standard, dark, tinted) at 1024&times;1024 RGB</li>
+            <li><strong>Exact hourglass profile:</strong> reuses the same 11 Catmull-Rom control points from
+            <code>SandGeometry.swift</code>, interpolated to a smooth 2D silhouette</li>
+            <li><strong>3&times; supersampling:</strong> draws at 3072&times;3072 then downscales with
+            LANCZOS for clean anti-aliased edges</li>
+            <li><strong>Deep charcoal background (#1A1A2E):</strong> matches the app&rsquo;s dark aesthetic</li>
+        </ul>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Design elements</div>
+        <ul>
+            <li><strong>Glass silhouette:</strong> subtle dark fill with bright blue-silver edge outlines
+            and a specular highlight curve on the right side</li>
+            <li><strong>Hex-packed sand balls:</strong> individually visible golden spheres with highlight
+            and shadow dots, settled in a shallow layer at the bottom of the lower chamber &mdash;
+            matching the app&rsquo;s resting state</li>
+            <li><strong>Wooden caps:</strong> warm tan rounded rectangles at top and bottom with highlight
+            and shadow stripes</li>
+            <li><strong>Radial glow:</strong> soft ambient glow behind the hourglass for depth</li>
+        </ul>
+    </div>
+
+    <div class="response-card">
+        <div class="label">Three variants</div>
+        <ul>
+            <li><strong>Standard:</strong> warm dark purple-grey background for light-mode home screens</li>
+            <li><strong>Dark:</strong> deep charcoal (#1A1A2E) background for dark-mode home screens</li>
+            <li><strong>Tinted:</strong> greyscale on near-black for iOS tinted mode</li>
+        </ul>
+        <p>Referenced in <code>Contents.json</code> with <code>luminosity</code> appearance variants,
+        matching the pattern used across all projects.</p>
+    </div>
+
+    <div class="insight">
+        <strong>Iterative refinement:</strong> the first version packed sand into both chambers with
+        scattered particle texture &mdash; too busy. The second tried hex-packed balls filling the
+        entire lower chamber &mdash; still too many. The final version places a shallow layer of
+        larger, individually visible golden balls at the very bottom, faithfully matching the
+        screenshot. The key was treating the icon as a miniature of the app&rsquo;s resting state
+        rather than trying to show the hourglass mid-flow.
+    </div>
+</div>
+
 </div><!-- container -->
 
 <footer>

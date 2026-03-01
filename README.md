@@ -27,6 +27,7 @@ A 3D hourglass egg timer for iPhone featuring real-time granular physics simulat
 - **Digital Readout** — monospaced countdown overlay
 - **CLI Arguments** — launch with `-mode cpu|gpu|metal`, `-count N`, `-size F`, `-dumpspawn` for automated testing and debugging
 - **Unit Tests** — 16 Swift Testing framework tests covering CPU physics, GPU physics, and spawn packing validation
+- **App Icons** — programmatically generated (Python/Pillow) in three variants (standard, dark, tinted) using the exact hourglass profile from the simulation code
 
 ## Requirements
 
@@ -110,4 +111,4 @@ Spatial hashing for O(N) collision detection could push particle counts well bey
 
 ## Architecture
 
-See [architecture.html](architecture.html) for interactive diagrams and [CLAUDE.md](CLAUDE.md) for the full developer reference.
+See [Architecture](https://pcwilliams.design/dev/shiftingsands/https://pcwilliams.design/dev/shiftingsands/architecture.html) for interactive diagrams, [Tutorial](https://pcwilliams.design/dev/shiftingsands/https://pcwilliams.design/dev/shiftingsands/tutorial.html) for the build narrative, and [CLAUDE.md](CLAUDE.md) for the full developer reference.
