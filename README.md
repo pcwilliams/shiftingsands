@@ -111,4 +111,4 @@ Spatial hashing for O(N) collision detection could push particle counts well bey
 
 ## Architecture
 
-See [Architecture](https://pcwilliams.design/dev/shiftingsands/https://pcwilliams.design/dev/shiftingsands/architecture.html) for interactive diagrams, [Tutorial](https://pcwilliams.design/dev/shiftingsands/https://pcwilliams.design/dev/shiftingsands/tutorial.html) for the build narrative, and [CLAUDE.md](CLAUDE.md) for the full developer reference.
+See [Architecture](https://pcwilliams.design/dev/shiftingsands/architecture.html) for interactive diagrams, [Tutorial](https://pcwilliams.design/dev/shiftingsands/tutorial.html) for the build narrative, and [CLAUDE.md](CLAUDE.md) for the full developer reference.
