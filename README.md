@@ -44,6 +44,19 @@ A 3D hourglass egg timer for iPhone featuring real-time granular physics simulat
 5. Adjust particle count, particle size, and duration with the sliders, or use a quick preset. Toggle **Colors** for random per-particle colours. Tap **Start**
 6. The hourglass flips and balls begin to flow through the neck
 
+For day-to-day rebuilds onto a paired iPhone, use the bundled helper —
+it builds (signed), installs, and launches in one step, forwarding any
+extra args to the app's launch arguments:
+
+```bash
+./run_phone.sh                              # plain launch
+./run_phone.sh -mode metal -count 50000     # Metal mode, 50k particles
+./run_phone.sh -test                        # 10s test mode + data dump
+```
+
+`run_phone.sh` reads `APPLE_TEAM_ID`, `IPHONE_UDID`, and `IPHONE_BUILD_ID`
+from `~/appledev/setupenv.sh` to handle code-signing automatically.
+
 ## How It Works
 
 The hourglass is built entirely from code — no 3D model files. An 11-point profile curve is interpolated with Catmull-Rom splines into ~80 smooth points, then rotated around the Y axis as a surface of revolution. Two glass surfaces exist: a visible outer shell with Blinn specular highlights, and an invisible inner shell that provides collision boundaries for the physics simulation.
